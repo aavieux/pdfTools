@@ -11,6 +11,12 @@ light/dark mode, background patterns and colour, the home page layout (card styl
 order and visibility) and the animal buddies (mascot, friends on/off, and 0–3 friends living along the bottom who wander
 about and sit, nap, drink, eat, groom, play, stretch or chase butterflies — click one to say hi). Everything is remembered in the browser.
 
+![Home page with favourites, group filters and search](ReadMeScreenshots/home.png)
+
+| Customize: home page layout | Create card |
+| --- | --- |
+| ![Customize dialog, Layout tab](ReadMeScreenshots/customize.png) | ![Create card tool with the party invitation template](ReadMeScreenshots/create-card.png) |
+
 ## Run it
 
 ```sh
