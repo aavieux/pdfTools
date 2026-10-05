@@ -1,0 +1,25 @@
+services:
+  maria-pdf-tools:
+    build: .
+    image: maria-pdf-tools:latest
+    container_name: maria-pdf-tools
+    ports:
+      - "8090:8080"
+    environment:
+      - MAX_UPLOAD_MB=300
+      # How many heavy jobs (LibreOffice, Chromium, Ghostscript, OCR) may run at the same time, and
+      # how many CPU threads OCR uses. Automatic by default: 1 and 1 on a NAS with less than 3 GB
+      # of RAM, otherwise 2 and 2. Check what was picked at http://<nas>:8090/api/info
+      # - HEAVY_JOBS=1
+      # - OCR_THREADS=1
+    # Working files live in RAM (fast, and nothing is left on the disks). It only uses what
+    # jobs actually need, but on a NAS with little RAM lower it, e.g. size=1g.
+    tmpfs:
+      - /tmp:size=2g
+    # Keep Docker's log of this container small instead of letting it grow forever.
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+    restart: unless-stopped
