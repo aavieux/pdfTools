@@ -53,10 +53,10 @@ export function mount(root, tool) {
     const ui = h(`<div class="cols">
         <div class="viewer-wrap" id="area"></div>
         <div class="panel-box stack sticky-side">
-          <p class="note sticky">Hover the page and click a <b style="color:#2563eb">paragraph</b>, <b style="color:#16a34a">table</b> or <b style="color:#ec4d8f">picture</b> to copy it ✿</p>
-          <h3 style="margin:0;color:var(--accent)">♡ Last copied</h3>
-          <div id="last" class="muted small">nothing yet</div>
-          <button class="btn" id="all">📋 Copy all text</button>
+          <p class="note sticky">${tr('Hover the page and click a {p}, {t} or {i} to copy it ✿', { p: `<b style="color:#2563eb">${tr('paragraph')}</b>`, t: `<b style="color:#16a34a">${tr('table')}</b>`, i: `<b style="color:#ec4d8f">${tr('picture')}</b>` })}</p>
+          <h3 style="margin:0;color:var(--accent)">${tr('♡ Last copied')}</h3>
+          <div id="last" class="muted small">${tr('nothing yet')}</div>
+          <button class="btn" id="all">${tr('📋 Copy all text')}</button>
         </div>
       </div>`);
     st.replaceChildren(ui);
@@ -69,7 +69,7 @@ export function mount(root, tool) {
       const page = view.pages[i];
       for (const b of list) {
         const r = toDisplay(page, b.rect);
-        const el = h(`<div class="obj" style="left:${r.l * 100}%;top:${r.t * 100}%;width:${(r.r - r.l) * 100}%;height:${(r.b - r.t) * 100}%;cursor:copy;border-radius:3px" title="Click to copy this ${b.type}"></div>`);
+        const el = h(`<div class="obj" style="left:${r.l * 100}%;top:${r.t * 100}%;width:${(r.r - r.l) * 100}%;height:${(r.b - r.t) * 100}%;cursor:copy;border-radius:3px" title="${tr({ text: 'Click to copy this paragraph', table: 'Click to copy this table', image: 'Click to copy this picture' }[b.type])}"></div>`);
         el.onmouseenter = () => { el.style.background = `rgba(${colors[b.type]},.15)`; el.style.outline = `2px solid rgba(${colors[b.type]},.7)`; };
         el.onmouseleave = () => { el.style.background = ''; el.style.outline = ''; };
         el.onclick = async () => {

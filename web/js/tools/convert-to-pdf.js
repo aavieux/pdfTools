@@ -24,7 +24,7 @@ export function mount(root, tool) {
     async run(files, values) {
       const pdfs = [];
       for (const [k, file] of files.entries()) {
-        busyText(`Converting ${k + 1} of ${files.length}…`, file.name);
+        busyText(tr('Converting {k} of {n}…', { k: k + 1, n: files.length }), file.name);
         let data;
         if (extOf(file.name) === 'pdf') {
           data = new Uint8Array(await file.arrayBuffer());

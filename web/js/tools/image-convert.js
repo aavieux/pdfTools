@@ -7,7 +7,7 @@ export function mount(root, tool) {
     tool,
     accept: { heic: '.heic,.heif', psd: '.psd,.psb', webp: '.webp' }[from],
     multiple: true,
-    actionLabel: `Convert to ${to.toUpperCase()}`,
+    actionLabel: tr('Convert to {format}', { format: to.toUpperCase() }),
     fields: to === 'jpg' ? [{ name: 'quality', label: 'JPG quality', type: 'range', value: 90, min: 30, max: 100, step: 5, unit: '%' }] : [],
     async run(files, v) {
       const outputs = [];

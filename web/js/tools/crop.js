@@ -1,4 +1,4 @@
-import { busy, busyText, celebrate, done, onZoomGesture, toast } from '../core.js';
+import { Handoff, busy, busyText, celebrate, continueWith, done, onZoomGesture, toast } from '../core.js';
 
 /*
  * Crop PDF — page-by-page cropping with undo/redo, auto-detect, rotation and
@@ -6,37 +6,37 @@ import { busy, busyText, celebrate, done, onZoomGesture, toast } from '../core.j
  */
 const MARKUP = `<div class="crop-tool"><div class="ctoolbar">
 
-    <button id="btnOpen" class="btn" title="Open PDF (Ctrl+O)">Open PDF</button>
+    <button id="btnOpen" class="btn" title="${tr('Open PDF (Ctrl+O)')}">${tr('Open PDF')}</button>
     <input id="fileInput" type="file" accept="application/pdf,.pdf" hidden>
     <span id="fileName" class="file-name"></span>
 
     <div class="group">
-      <button id="btnUndo" class="btn icon" title="Undo (Ctrl+Z)" disabled>
+      <button id="btnUndo" class="btn icon" title="${tr('Undo (Ctrl+Z)')}" disabled>
         <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"/></svg>
       </button>
-      <button id="btnRedo" class="btn icon" title="Redo (Ctrl+Shift+Z)" disabled>
+      <button id="btnRedo" class="btn icon" title="${tr('Redo (Ctrl+Shift+Z)')}" disabled>
         <svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5M20 9H9a5 5 0 0 0 0 10h3"/></svg>
       </button>
     </div>
 
     <div class="group">
-      <button id="btnPrev" class="btn icon" title="Previous page (←)" disabled>
+      <button id="btnPrev" class="btn icon" title="${tr('Previous page (←)')}" disabled>
         <svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
       </button>
-      <input id="pageInput" class="page-input" type="number" min="1" value="1" disabled aria-label="Page number">
+      <input id="pageInput" class="page-input" type="number" min="1" value="1" disabled aria-label="${tr('Page number')}">
       <span class="muted">/ <span id="pageCount">0</span></span>
-      <button id="btnNext" class="btn icon" title="Next page (→)" disabled>
+      <button id="btnNext" class="btn icon" title="${tr('Next page (→)')}" disabled>
         <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
       </button>
     </div>
 
     <div class="group">
-      <button id="btnZoomOut" class="btn icon" title="Zoom out (−)" disabled>
+      <button id="btnZoomOut" class="btn icon" title="${tr('Zoom out (−)')}" disabled>
         <svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
       </button>
-      <select id="zoomSelect" disabled aria-label="Zoom">
-        <option value="fit">Fit page</option>
-        <option value="width">Fit width</option>
+      <select id="zoomSelect" disabled aria-label="${tr('Zoom')}">
+        <option value="fit">${tr('Fit page')}</option>
+        <option value="width">${tr('Fit width')}</option>
         <option value="0.5">50%</option>
         <option value="0.75">75%</option>
         <option value="1">100%</option>
@@ -46,19 +46,20 @@ const MARKUP = `<div class="crop-tool"><div class="ctoolbar">
         <option value="3">300%</option>
         <option value="custom" hidden>—</option>
       </select>
-      <button id="btnZoomIn" class="btn icon" title="Zoom in (+)" disabled>
+      <button id="btnZoomIn" class="btn icon" title="${tr('Zoom in (+)')}" disabled>
         <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       </button>
     </div>
 
-    <label class="toggle" title="Preview cropped result (P)">
-      <input id="previewToggle" type="checkbox" disabled> Preview
+    <label class="toggle" title="${tr('Preview cropped result (P)')}">
+      <input id="previewToggle" type="checkbox" disabled> ${tr('Preview')}
     </label>
 
     <div class="spacer"></div>
-    <button id="btnSave" class="btn primary" title="Save cropped PDF (Ctrl+S)" disabled>Save PDF</button>
+    <button id="btnNextTool" class="btn" title="${tr('Open the cropped PDF in another tool, with or without saving it')}" disabled>${tr('↪ Other tool')}</button>
+    <button id="btnSave" class="btn primary" title="${tr('Save cropped PDF (Ctrl+S)')}" disabled>${tr('Save PDF')}</button>
   </div>
-    <aside class="thumbs" id="thumbs" aria-label="Pages"></aside>
+    <aside class="thumbs" id="thumbs" aria-label="${tr('Pages')}"></aside>
 
     <section class="viewer" id="viewer">
       <div class="empty" id="emptyState">
@@ -66,9 +67,9 @@ const MARKUP = `<div class="crop-tool"><div class="ctoolbar">
           <span class="float-heart h1"></span><span class="float-heart h2"></span><span class="float-heart h3"></span>
           <span class="cat big" data-cat="main" data-size="6"></span>
         </div>
-        <h2>Drop a PDF here, cutie ♡</h2>
-        <p>or <button class="link" id="btnOpen2">choose a file</button></p>
-        <p class="note">everything stays in your browser ~ nothing gets uploaded ✿</p>
+        <h2>${tr('Drop a PDF here, cutie ♡')}</h2>
+        <p>${tr('or {link}', { link: `<button class="link" id="btnOpen2">${tr('choose a file')}</button>` })}</p>
+        <p class="note">${tr('everything stays in your browser ~ nothing gets uploaded ✿')}</p>
       </div>
       <div class="stage" id="stage" hidden>
         <canvas id="pageCanvas"></canvas>
@@ -83,18 +84,18 @@ const MARKUP = `<div class="crop-tool"><div class="ctoolbar">
 
     <aside class="cpanel" id="panel">
       <section>
-        <h3>Page <span id="panelPage">–</span></h3>
+        <h3>${tr('Page')} <span id="panelPage">–</span></h3>
         <dl class="info">
-          <dt>Original</dt><dd id="infoOrig">–</dd>
-          <dt>Cropped</dt><dd id="infoCrop">–</dd>
+          <dt>${tr('Original')}</dt><dd id="infoOrig">–</dd>
+          <dt>${tr('Cropped')}</dt><dd id="infoCrop">–</dd>
         </dl>
-        <p class="note sticky">psst~ drag on the page to draw a crop box ✂ pull the edges or corners to resize, grab the middle to move it, or hold Alt to draw a fresh one ♡</p>
+        <p class="note sticky">${tr('psst~ drag on the page to draw a crop box ✂ pull the edges or corners to resize, grab the middle to move it, or hold Alt to draw a fresh one ♡')}</p>
       </section>
 
       <section>
         <div class="crow between">
-          <h3>♡ Margins</h3>
-          <select id="unitSelect" aria-label="Unit">
+          <h3>${tr('♡ Margins')}</h3>
+          <select id="unitSelect" aria-label="${tr('Unit')}">
             <option value="pt">pt</option>
             <option value="mm" selected>mm</option>
             <option value="in">in</option>
@@ -102,92 +103,93 @@ const MARKUP = `<div class="crop-tool"><div class="ctoolbar">
           </select>
         </div>
         <div class="margins">
-          <label class="m-top">Top<input type="number" step="any" min="0" data-m="t" disabled></label>
-          <label class="m-left">Left<input type="number" step="any" min="0" data-m="l" disabled></label>
-          <label class="m-right">Right<input type="number" step="any" min="0" data-m="r" disabled></label>
-          <label class="m-bottom">Bottom<input type="number" step="any" min="0" data-m="b" disabled></label>
+          <label class="m-top">${tr('Top')}<input type="number" step="any" min="0" data-m="t" disabled></label>
+          <label class="m-left">${tr('Left')}<input type="number" step="any" min="0" data-m="l" disabled></label>
+          <label class="m-right">${tr('Right')}<input type="number" step="any" min="0" data-m="r" disabled></label>
+          <label class="m-bottom">${tr('Bottom')}<input type="number" step="any" min="0" data-m="b" disabled></label>
         </div>
       </section>
 
       <section>
-        <h3>✿ Tools</h3>
+        <h3>${tr('✿ Tools')}</h3>
         <div class="crow">
-          <button class="btn" id="btnAuto" disabled title="Crop to the visible content (A)">Auto-detect content</button>
-          <label class="inline">pad <input id="autoPad" type="number" value="6" min="0" step="1"> pt</label>
+          <button class="btn" id="btnAuto" disabled title="${tr('Crop to the visible content (A)')}">${tr('Auto-detect content')}</button>
+          <label class="inline">${tr('pad')} <input id="autoPad" type="number" value="6" min="0" step="1"> pt</label>
         </div>
         <div class="crow">
-          <button class="btn" id="btnRotL" disabled title="Rotate page left (Shift+R)">⟲ Rotate</button>
-          <button class="btn" id="btnRotR" disabled title="Rotate page right (R)">⟳ Rotate</button>
-          <button class="btn" id="btnClear" disabled title="Remove the crop on this page (Delete)">Clear crop</button>
+          <button class="btn" id="btnRotL" disabled title="${tr('Rotate page left (Shift+R)')}">${tr('⟲ Rotate')}</button>
+          <button class="btn" id="btnRotR" disabled title="${tr('Rotate page right (R)')}">${tr('⟳ Rotate')}</button>
+          <button class="btn" id="btnClear" disabled title="${tr('Remove the crop on this page (Delete)')}">${tr('Clear crop')}</button>
         </div>
         <div class="crow">
-          <button class="btn" id="btnCopy" disabled title="Copy this page's crop (Ctrl+C)">Copy crop</button>
-          <button class="btn" id="btnPaste" disabled title="Paste crop onto this page (Ctrl+V)">Paste crop</button>
+          <button class="btn" id="btnCopy" disabled title="${tr('Copy this page\'s crop (Ctrl+C)')}">${tr('Copy crop')}</button>
+          <button class="btn" id="btnPaste" disabled title="${tr('Paste crop onto this page (Ctrl+V)')}">${tr('Paste crop')}</button>
         </div>
       </section>
 
       <section>
-        <h3>♡ Apply this crop to</h3>
+        <h3>${tr('♡ Apply this crop to')}</h3>
         <div class="crow">
-          <select id="applyScope" disabled aria-label="Pages">
-            <option value="all">All pages</option>
-            <option value="odd">Odd pages</option>
-            <option value="even">Even pages</option>
-            <option value="range">Page range…</option>
+          <select id="applyScope" disabled aria-label="${tr('Pages')}">
+            <option value="all">${tr('All pages')}</option>
+            <option value="odd">${tr('Odd pages')}</option>
+            <option value="even">${tr('Even pages')}</option>
+            <option value="range">${tr('Page range…')}</option>
           </select>
-          <input id="applyRange" type="text" placeholder="e.g. 1-3, 5, 8-" hidden aria-label="Page range">
+          <input id="applyRange" type="text" placeholder="${tr('e.g. 1-3, 5, 8-')}" hidden aria-label="${tr('Page range')}">
         </div>
         <div class="crow">
-          <select id="applyMatch" disabled aria-label="Match mode" title="How to transfer the crop to pages of a different size">
-            <option value="rel">Same margins (% of page)</option>
-            <option value="abs">Same margins (absolute)</option>
+          <select id="applyMatch" disabled aria-label="${tr('Match mode')}" title="${tr('How to transfer the crop to pages of a different size')}">
+            <option value="rel">${tr('Same margins (% of page)')}</option>
+            <option value="abs">${tr('Same margins (absolute)')}</option>
           </select>
-          <button class="btn" id="btnApply" disabled>Apply</button>
+          <button class="btn" id="btnApply" disabled>${tr('Apply')}</button>
         </div>
-        <label class="check"><input type="checkbox" id="linkAll" disabled> Link all pages — every edit applies to all pages</label>
+        <label class="check"><input type="checkbox" id="linkAll" disabled> ${tr('Link all pages — every edit applies to all pages')}</label>
       </section>
 
       <section>
-        <h3>✿ All pages</h3>
+        <h3>${tr('✿ All pages')}</h3>
         <div class="crow">
-          <button class="btn" id="btnAutoAll" disabled title="Auto-detect content on every page individually">Auto-detect each page</button>
+          <button class="btn" id="btnAutoAll" disabled title="${tr('Auto-detect content on every page individually')}">${tr('Auto-detect each page')}</button>
         </div>
         <div class="crow">
-          <button class="btn" id="btnRotAllL" disabled>⟲ Rotate all</button>
-          <button class="btn" id="btnRotAllR" disabled>⟳ Rotate all</button>
-        </div>
-      </section>
-
-      <section>
-        <h3>↺ Revert</h3>
-        <div class="crow">
-          <button class="btn" id="btnRevertPage" disabled title="Undo all crop and rotation changes on this page">Revert page</button>
-          <button class="btn danger" id="btnRevertAll" disabled title="Undo all crop and rotation changes on every page">Revert all pages</button>
+          <button class="btn" id="btnRotAllL" disabled>${tr('⟲ Rotate all')}</button>
+          <button class="btn" id="btnRotAllR" disabled>${tr('⟳ Rotate all')}</button>
         </div>
       </section>
 
       <section>
-        <h3>♡ Save</h3>
-        <label class="check" title="Also sets MediaBox, TrimBox, BleedBox and ArtBox, so every viewer and printer respects the crop. The hidden content stays in the file.">
-          <input type="checkbox" id="hardCrop" checked> Set all page boxes (most compatible)
+        <h3>${tr('↺ Revert')}</h3>
+        <div class="crow">
+          <button class="btn" id="btnRevertPage" disabled title="${tr('Undo all crop and rotation changes on this page')}">${tr('Revert page')}</button>
+          <button class="btn danger" id="btnRevertAll" disabled title="${tr('Undo all crop and rotation changes on every page')}">${tr('Revert all pages')}</button>
+        </div>
+      </section>
+
+      <section>
+        <h3>${tr('♡ Save')}</h3>
+        <label class="check" title="${tr('Also sets MediaBox, TrimBox, BleedBox and ArtBox, so every viewer and printer respects the crop. The hidden content stays in the file.')}">
+          <input type="checkbox" id="hardCrop" checked> ${tr('Set all page boxes (most compatible)')}
         </label>
-        <button class="btn primary wide" id="btnSave2" disabled>Save cropped PDF ♡</button>
+        <button class="btn primary wide" id="btnSave2" disabled>${tr('Save cropped PDF ♡')}</button>
+        <button class="btn wide" id="btnNextTool2" disabled>${tr('↪ Continue in another tool')}</button>
       </section>
 
       <details class="shortcuts">
-        <summary>Keyboard shortcuts</summary>
+        <summary>${tr('Keyboard shortcuts')}</summary>
         <dl>
-          <dt>← / →</dt><dd>Previous / next page</dd>
-          <dt>Ctrl+Z / Ctrl+Shift+Z</dt><dd>Undo / redo</dd>
-          <dt>Ctrl+C / Ctrl+V</dt><dd>Copy / paste crop</dd>
-          <dt>Delete</dt><dd>Clear crop on page</dd>
-          <dt>A</dt><dd>Auto-detect content</dd>
-          <dt>R / Shift+R</dt><dd>Rotate right / left</dd>
-          <dt>P</dt><dd>Toggle preview</dd>
-          <dt>+ / − / 0</dt><dd>Zoom in / out / fit</dd>
-          <dt>Pinch / Ctrl+scroll</dt><dd>Zoom freely</dd>
-          <dt>Ctrl+S</dt><dd>Save</dd>
-          <dt>Esc</dt><dd>Cancel drag</dd>
+          <dt>← / →</dt><dd>${tr('Previous / next page')}</dd>
+          <dt>Ctrl+Z / Ctrl+Shift+Z</dt><dd>${tr('Undo / redo')}</dd>
+          <dt>Ctrl+C / Ctrl+V</dt><dd>${tr('Copy / paste crop')}</dd>
+          <dt>Delete</dt><dd>${tr('Clear crop on page')}</dd>
+          <dt>A</dt><dd>${tr('Auto-detect content')}</dd>
+          <dt>R / Shift+R</dt><dd>${tr('Rotate right / left')}</dd>
+          <dt>P</dt><dd>${tr('Toggle preview')}</dd>
+          <dt>+ / − / 0</dt><dd>${tr('Zoom in / out / fit')}</dd>
+          <dt>${tr('Pinch / Ctrl+scroll')}</dt><dd>${tr('Zoom freely')}</dd>
+          <dt>Ctrl+S</dt><dd>${tr('Save')}</dd>
+          <dt>Esc</dt><dd>${tr('Cancel drag')}</dd>
         </dl>
       </details>
     </aside>
@@ -220,6 +222,7 @@ export function mount(root) {
     btnZoomIn: $('#btnZoomIn'), btnZoomOut: $('#btnZoomOut'), zoomSelect: $('#zoomSelect'),
     previewToggle: $('#previewToggle'),
     btnSave: $('#btnSave'), btnSave2: $('#btnSave2'), hardCrop: $('#hardCrop'),
+    btnNextTool: $('#btnNextTool'), btnNextTool2: $('#btnNextTool2'),
     thumbs: $('#thumbs'), viewer: $('#viewer'), empty: $('#emptyState'),
     stage: $('#stage'), canvas: $('#pageCanvas'), cropBox: $('#cropBox'),
     panelPage: $('#panelPage'), infoOrig: $('#infoOrig'), infoCrop: $('#infoCrop'),
@@ -386,7 +389,7 @@ export function mount(root) {
     S.rots = entry.rots;
     S.version++;
     afterChange(prevRots);
-    toast(`${from === S.undo ? 'Undid' : 'Redid'}: ${entry.label}`);
+    toast(tr(from === S.undo ? 'Undid: {action}' : 'Redid: {action}', { action: entry.label }));
   }
 
   const undo = () => restore(S.undo, S.redo);
@@ -412,22 +415,22 @@ export function mount(root) {
       toast('That file is not a PDF.', 'error');
       return;
     }
-    if (isDirty() && !confirm('You have unsaved changes. Open another file anyway?')) return;
+    if (isDirty() && !confirm(tr('You have unsaved changes. Open another file anyway?'))) return;
 
     showBusy('Opening…');
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
       const task = pdfjsLib.getDocument({ data: bytes.slice() });
       task.onPassword = (update, reason) => {
-        const pw = prompt(reason === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD
-          ? 'Incorrect password. Try again:' : 'This PDF is password protected. Password:');
+        const pw = prompt(tr(reason === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD
+          ? 'Incorrect password. Try again:' : 'This PDF is password protected. Password:'));
         if (pw === null) task.destroy(); else update(pw);
       };
       const doc = await task.promise;
 
       const pages = [];
       for (let n = 1; n <= doc.numPages; n++) {
-        if (n % 25 === 0) showBusy(`Reading pages… ${n}/${doc.numPages}`);
+        if (n % 25 === 0) showBusy(`${tr('Reading pages…')} ${n}/${doc.numPages}`);
         const p = await doc.getPage(n);
         pages.push({ view: [...p.view], rotate: p.rotate || 0 });
       }
@@ -453,11 +456,13 @@ export function mount(root) {
       buildThumbs();
       await renderMain();
       updateUI();
+      Handoff.note([file]);
+      Handoff.live = async () => [croppedFile(await buildPdf())];
       if (S.isEncrypted) toast('This PDF is encrypted; saving may not be possible.', 'error');
     } catch (err) {
       console.error(err);
       if (err && err.name === 'PasswordException') toast('Opening cancelled.', 'error');
-      else toast(`Could not open PDF: ${err && err.message ? err.message : err}`, 'error');
+      else toast(tr('Could not open PDF: {error}', { error: trMsg(err && err.message ? err.message : err) }), 'error');
     } finally {
       hideBusy();
     }
@@ -744,7 +749,7 @@ export function mount(root) {
       return;
     }
     const label = d.mode === 'move' ? 'Move crop' : d.mode === 'resize' ? 'Resize crop' : 'Draw crop';
-    setCrop(d.n, label);
+    setCrop(d.n, tr(label));
   }
 
   els.stage.addEventListener('pointerup', endDrag);
@@ -815,7 +820,7 @@ export function mount(root) {
       return;
     }
     els.marginInputs.forEach((x) => x.classList.remove('invalid'));
-    setCrop(n, 'Edit margins');
+    setCrop(n, tr('Edit margins'));
   }
 
   /* ================= Page tools ================= */
@@ -827,22 +832,22 @@ export function mount(root) {
   }
 
   function clearCrop() {
-    commit('Clear crop', () => {
+    commit(tr('Clear crop'), () => {
       if (els.linkAll.checked) S.crops = S.crops.map(() => null);
       else S.crops[S.cur] = null;
     });
   }
 
   function revertPage() {
-    commit(`Revert page ${S.cur + 1}`, () => {
+    commit(tr('Revert page {n}', { n: S.cur + 1 }), () => {
       S.crops[S.cur] = null;
       S.rots[S.cur] = 0;
     });
   }
 
   function revertAll() {
-    if (!confirm('Remove all crops and rotations from every page?')) return;
-    commit('Revert all pages', () => {
+    if (!confirm(tr('Remove all crops and rotations from every page?'))) return;
+    commit(tr('Revert all pages'), () => {
       S.crops = S.crops.map(() => null);
       S.rots = S.rots.map(() => 0);
     });
@@ -851,7 +856,7 @@ export function mount(root) {
   function copyCrop() {
     const n = cropNorm(S.cur);
     S.clip = { n, m: normToMargins(S.cur, n), from: S.cur };
-    toast(`Copied crop from page ${S.cur + 1}`);
+    toast(tr('Copied crop from page {n}', { n: S.cur + 1 }));
     updateUI();
   }
 
@@ -859,7 +864,7 @@ export function mount(root) {
     if (!S.clip) return;
     const n = transferCrop(S.clip, S.cur, els.applyMatch.value);
     if (!n) { toast('Copied crop does not fit this page.', 'error'); return; }
-    setCrop(n, 'Paste crop');
+    setCrop(n, tr('Paste crop'));
   }
 
   /** Convert a source crop {n, m} for use on page `i`, either relative or absolute. */
@@ -877,20 +882,20 @@ export function mount(root) {
   function parseRange(text, count) {
     const out = new Set();
     const parts = text.split(/[,;\s]+/).filter(Boolean);
-    if (!parts.length) throw new Error('Enter a page range, e.g. 1-3, 5');
+    if (!parts.length) throw new Error(tr('Enter a page range, e.g. 1-3, 5'));
     for (const part of parts) {
       const m = part.match(/^(\d*)\s*-\s*(\d*)$/);
       if (m) {
         const a = m[1] ? parseInt(m[1], 10) : 1;
         const b = m[2] ? parseInt(m[2], 10) : count;
-        if (a < 1 || b > count || a > b) throw new Error(`Invalid range "${part}"`);
+        if (a < 1 || b > count || a > b) throw new Error(tr('Invalid range "{part}"', { part }));
         for (let k = a; k <= b; k++) out.add(k - 1);
       } else if (/^\d+$/.test(part)) {
         const k = parseInt(part, 10);
-        if (k < 1 || k > count) throw new Error(`Page ${k} does not exist`);
+        if (k < 1 || k > count) throw new Error(tr('Page {k} does not exist', { k }));
         out.add(k - 1);
       } else {
-        throw new Error(`Cannot read "${part}"`);
+        throw new Error(tr('Cannot read "{part}"', { part }));
       }
     }
     return [...out].sort((a, b) => a - b);
@@ -914,13 +919,13 @@ export function mount(root) {
     const src = { n, m: normToMargins(S.cur, n) };
     const mode = els.applyMatch.value;
     let skipped = 0;
-    commit(`Apply crop to ${targets.length} page(s)`, () => {
+    commit(tr('Apply crop to {n} page(s)', { n: targets.length }), () => {
       for (const i of targets) {
         const t = transferCrop(src, i, mode);
         if (t) S.crops[i] = normToCrop(i, t); else skipped++;
       }
     });
-    toast(`Applied to ${targets.length - skipped} page(s)` + (skipped ? `, ${skipped} skipped (too small)` : ''));
+    toast(tr('Applied to {n} page(s)', { n: targets.length - skipped }) + (skipped ? tr(', {n} skipped (too small)', { n: skipped }) : ''));
   }
 
   /** Render page i offscreen and find the bounding box of non-white pixels. */
@@ -970,7 +975,7 @@ export function mount(root) {
     try {
       const n = await detectContent(S.cur, autoPad());
       if (!n) { toast('This page looks blank~ nothing to crop', 'error'); return; }
-      setCrop(n, 'Auto-detect content');
+      setCrop(n, tr('Auto-detect content'));
     } catch (e) {
       console.error(e);
       toast('Auto-detect failed.', 'error');
@@ -984,7 +989,7 @@ export function mount(root) {
     const results = [];
     try {
       for (let i = 0; i < S.pages.length; i++) {
-        showBusy(`Detecting content… ${i + 1}/${S.pages.length}`);
+        showBusy(`${tr('Detecting content…')} ${i + 1}/${S.pages.length}`);
         results.push(await detectContent(i, pad));
       }
     } catch (e) {
@@ -994,37 +999,63 @@ export function mount(root) {
       return;
     }
     hideBusy();
-    commit('Auto-detect all pages', () => {
+    commit(tr('Auto-detect all pages'), () => {
       results.forEach((n, i) => { if (n) S.crops[i] = normToCrop(i, n); });
     });
     const blank = results.filter((r) => !r).length;
-    toast(`Auto-cropped ${results.length - blank} page(s)` + (blank ? `, ${blank} blank page(s) left as is` : ''));
+    toast(tr('Auto-cropped {n} page(s)', { n: results.length - blank }) + (blank ? tr(', {n} blank page(s) left as is', { n: blank }) : ''));
   }
 
   /* ================= Saving ================= */
+
+  /** The PDF with every crop and rotation applied. */
+  async function buildPdf() {
+    const pdf = await PDFLib.PDFDocument.load(S.bytes, { ignoreEncryption: true, updateMetadata: false });
+    const pages = pdf.getPages();
+    const hard = els.hardCrop.checked;
+    pages.forEach((p, i) => {
+      const c = S.crops[i];
+      if (c) {
+        const args = [c.x1, c.y1, c.x2 - c.x1, c.y2 - c.y1];
+        p.setCropBox(...args);
+        if (hard) {
+          p.setMediaBox(...args);
+          p.setTrimBox(...args);
+          p.setBleedBox(...args);
+          p.setArtBox(...args);
+        }
+      }
+      if (S.rots[i]) p.setRotation(PDFLib.degrees(totalRot(i)));
+    });
+    return pdf.save();
+  }
+
+  const croppedFile = (bytes) => new File([bytes], outputName(), { type: 'application/pdf' });
+
+  /** Hand the cropped PDF on to another tool; the picker can save a copy first. */
+  async function continueElsewhere() {
+    if (!S.doc) return;
+    showBusy('Getting your file ready…');
+    let file;
+    try {
+      file = croppedFile(await buildPdf());
+    } catch (e) {
+      console.error(e);
+      toast(tr('Save failed: {error}', { error: trMsg(e && e.message ? e.message : e) }), 'error');
+      return;
+    } finally {
+      hideBusy();
+    }
+    // Leaving with unsaved changes is fine here: they travel with the file.
+    S.savedVersion = S.version;
+    continueWith([file], { save: false, title: 'Open the cropped PDF in another tool' });
+  }
 
   async function save() {
     if (!S.doc) return;
     showBusy('Saving…');
     try {
-      const pdf = await PDFLib.PDFDocument.load(S.bytes, { ignoreEncryption: true, updateMetadata: false });
-      const pages = pdf.getPages();
-      const hard = els.hardCrop.checked;
-      pages.forEach((p, i) => {
-        const c = S.crops[i];
-        if (c) {
-          const args = [c.x1, c.y1, c.x2 - c.x1, c.y2 - c.y1];
-          p.setCropBox(...args);
-          if (hard) {
-            p.setMediaBox(...args);
-            p.setTrimBox(...args);
-            p.setBleedBox(...args);
-            p.setArtBox(...args);
-          }
-        }
-        if (S.rots[i]) p.setRotation(PDFLib.degrees(totalRot(i)));
-      });
-      const out = await pdf.save();
+      const out = await buildPdf();
       download(out, outputName());
       S.savedVersion = S.version;
       updateUI();
@@ -1032,7 +1063,7 @@ export function mount(root) {
       celebrate();
     } catch (e) {
       console.error(e);
-      toast(`Save failed: ${e && e.message ? e.message : e}`, 'error');
+      toast(tr('Save failed: {error}', { error: trMsg(e && e.message ? e.message : e) }), 'error');
     } finally {
       hideBusy();
     }
@@ -1062,9 +1093,9 @@ export function mount(root) {
     const i = S.cur;
     const unit = els.unitSelect.value === '%' ? 'mm' : els.unitSelect.value;
     const [w, h] = dispDims(i);
-    const show = (pw, ph) => `${fmt(pw / PT_PER[unit], unit)} × ${fmt(ph / PT_PER[unit], unit)} ${unit}`;
-    els.infoOrig.textContent = show(w, h) + (S.rots[i] ? ` · rotated ${S.rots[i]}°` : '');
-    els.infoCrop.textContent = isFull(n) ? 'not cropped' : show((n.r - n.l) * w, (n.b - n.t) * h);
+    const show = (pw, ph) => `${fmtNum(fmt(pw / PT_PER[unit], unit))} × ${fmtNum(fmt(ph / PT_PER[unit], unit))} ${tr(unit)}`;
+    els.infoOrig.textContent = show(w, h) + (S.rots[i] ? ` · ${tr('rotated {deg}°', { deg: S.rots[i] })}` : '');
+    els.infoCrop.textContent = isFull(n) ? tr('not cropped') : show((n.r - n.l) * w, (n.b - n.t) * h);
   }
 
   function updateUI() {
@@ -1073,26 +1104,26 @@ export function mount(root) {
     const set = (el, enabled) => { el.disabled = !enabled; };
 
     [els.btnZoomIn, els.btnZoomOut, els.zoomSelect, els.pageInput, els.previewToggle,
-      els.btnSave, els.btnSave2, els.btnAuto, els.btnRotL, els.btnRotR, els.btnCopy,
+      els.btnSave, els.btnSave2, els.btnNextTool, els.btnNextTool2, els.btnAuto, els.btnRotL, els.btnRotR, els.btnCopy,
       els.applyScope, els.applyMatch, els.btnApply, els.linkAll, els.btnAutoAll,
       els.btnRotAllL, els.btnRotAllR, els.btnRevertAll, ...els.marginInputs].forEach((el) => set(el, has));
     els.marginInputs.forEach((el) => set(el, has && !S.preview));
 
     set(els.btnUndo, S.undo.length > 0);
     set(els.btnRedo, S.redo.length > 0);
-    els.btnUndo.title = S.undo.length ? `Undo ${S.undo[S.undo.length - 1].label} (Ctrl+Z)` : 'Undo (Ctrl+Z)';
-    els.btnRedo.title = S.redo.length ? `Redo ${S.redo[S.redo.length - 1].label} (Ctrl+Shift+Z)` : 'Redo (Ctrl+Shift+Z)';
+    els.btnUndo.title = S.undo.length ? tr('Undo {action} (Ctrl+Z)', { action: S.undo[S.undo.length - 1].label }) : tr('Undo (Ctrl+Z)');
+    els.btnRedo.title = S.redo.length ? tr('Redo {action} (Ctrl+Shift+Z)', { action: S.redo[S.redo.length - 1].label }) : tr('Redo (Ctrl+Shift+Z)');
     set(els.btnPrev, has && S.cur > 0);
     set(els.btnNext, has && S.cur < count - 1);
     set(els.btnClear, has && (!!S.crops[S.cur] || els.linkAll.checked));
     set(els.btnPaste, has && !!S.clip);
     set(els.btnRevertPage, has && (!!S.crops[S.cur] || !!S.rots[S.cur]));
-    els.btnSave.textContent = isDirty() ? 'Save PDF •' : 'Save PDF';
+    els.btnSave.textContent = isDirty() ? `${tr('Save PDF')} •` : tr('Save PDF');
 
     els.pageCount.textContent = count;
     els.pageInput.max = count;
     if (document.activeElement !== els.pageInput) els.pageInput.value = has ? S.cur + 1 : 1;
-    els.panelPage.textContent = has ? `${S.cur + 1} of ${count}` : '–';
+    els.panelPage.textContent = has ? tr('{k} of {n}', { k: S.cur + 1, n: count }) : '–';
 
     const zoomVal = String(S.zoom);
     const known = [...els.zoomSelect.options].some((o) => o.value === zoomVal && !o.hidden);
@@ -1145,6 +1176,8 @@ export function mount(root) {
 
   els.btnSave.addEventListener('click', save);
   els.btnSave2.addEventListener('click', save);
+  els.btnNextTool.addEventListener('click', continueElsewhere);
+  els.btnNextTool2.addEventListener('click', continueElsewhere);
 
   els.unitSelect.addEventListener('change', () => { if (S.doc) updateOverlay(); });
   els.marginInputs.forEach((input) => {
@@ -1154,10 +1187,10 @@ export function mount(root) {
 
   els.btnAuto.addEventListener('click', autoDetect);
   els.btnAutoAll.addEventListener('click', autoDetectAll);
-  els.btnRotL.addEventListener('click', () => rotate([S.cur], -90, 'Rotate left'));
-  els.btnRotR.addEventListener('click', () => rotate([S.cur], 90, 'Rotate right'));
-  els.btnRotAllL.addEventListener('click', () => rotate(S.pages.map((_, i) => i), -90, 'Rotate all left'));
-  els.btnRotAllR.addEventListener('click', () => rotate(S.pages.map((_, i) => i), 90, 'Rotate all right'));
+  els.btnRotL.addEventListener('click', () => rotate([S.cur], -90, tr('Rotate left')));
+  els.btnRotR.addEventListener('click', () => rotate([S.cur], 90, tr('Rotate right')));
+  els.btnRotAllL.addEventListener('click', () => rotate(S.pages.map((_, i) => i), -90, tr('Rotate all left')));
+  els.btnRotAllR.addEventListener('click', () => rotate(S.pages.map((_, i) => i), 90, tr('Rotate all right')));
   els.btnClear.addEventListener('click', clearCrop);
   els.btnCopy.addEventListener('click', copyCrop);
   els.btnPaste.addEventListener('click', pasteCrop);
@@ -1249,7 +1282,7 @@ export function mount(root) {
       case '0': setZoom('fit'); break;
       default:
         if (key === 'a') autoDetect();
-        else if (key === 'r') rotate([S.cur], e.shiftKey ? -90 : 90, e.shiftKey ? 'Rotate left' : 'Rotate right');
+        else if (key === 'r') rotate([S.cur], e.shiftKey ? -90 : 90, tr(e.shiftKey ? 'Rotate left' : 'Rotate right'));
         else if (key === 'p') { els.previewToggle.checked = !els.previewToggle.checked; els.previewToggle.dispatchEvent(new Event('change')); }
     }
   });
@@ -1259,6 +1292,10 @@ export function mount(root) {
   });
 
   updateUI();
+
+  // A PDF handed on from another tool opens straight away.
+  const handed = Handoff.take();
+  if (handed?.length) openFile(handed[0]);
 
   return () => {
     cleanups.forEach((fn) => fn());

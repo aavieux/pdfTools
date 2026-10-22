@@ -16,27 +16,27 @@ export function mount(root, tool) {
     });
     if (!results) return;
     st.replaceChildren(...results.map(({ file, data }) => sigCard(file, data)),
-      h('<div class="row"><button class="btn">↺ Check other files</button></div>'));
+      h(`<div class="row"><button class="btn">${tr('↺ Check other files')}</button></div>`));
     st.querySelector('.row:last-child .btn').onclick = start;
   }
 
   function sigCard(file, d) {
     if (!d.count) {
-      return h(`<div class="panel-box stack"><b>📄 ${esc(file.name)}</b><p>This PDF has no digital signatures. <span class="muted">(Drawn signatures from “Sign PDF” are pictures, not cryptographic signatures.)</span></p></div>`);
+      return h(`<div class="panel-box stack"><b>📄 ${esc(file.name)}</b><p>${tr('This PDF has no digital signatures.')} <span class="muted">${tr('(Drawn signatures from “Sign PDF” are pictures, not cryptographic signatures.)')}</span></p></div>`);
     }
-    return h(`<div class="panel-box stack"><b>📄 ${esc(file.name)} · ${d.count} signature${d.count > 1 ? 's' : ''}</b>
+    return h(`<div class="panel-box stack"><b>📄 ${esc(file.name)} · ${trn(d.count, '{n} signature', '{n} signatures')}</b>
       ${d.signatures.map((s) => {
         const status = s.error ? 'fail' : s.intact && s.valid ? (s.trusted ? 'pass' : 'warn') : 'fail';
         return `<div class="check-item ${status}"><span class="st">${ICON[status]}</span><div>
-          <div><b>${esc(s.signer || s.field)}</b> — ${s.error ? esc(s.error) : s.intact ? (s.valid ? (s.trusted ? 'valid and trusted' : 'intact & cryptographically valid, signer not in a trust list') : 'signature invalid') : 'document was changed after signing!'}</div>
+          <div><b>${esc(s.signer || s.field)}</b> — ${s.error ? esc(s.error) : tr(s.intact ? (s.valid ? (s.trusted ? 'valid and trusted' : 'intact & cryptographically valid, signer not in a trust list') : 'signature invalid') : 'document was changed after signing!')}</div>
           <div class="ci-sub">${[
-            s.signed_at && `Signed: ${esc(s.signed_at)}`, s.issuer && `Issuer: ${esc(s.issuer)}`,
-            s.cert_valid_from && `Certificate valid ${esc(s.cert_valid_from)} → ${esc(s.cert_valid_to)}`,
-            s.coverage && `Coverage: ${esc(s.coverage)}`, s.modification && `Changes after signing: ${esc(s.modification)}`,
-            s.md_algorithm && `Hash: ${esc(s.md_algorithm)}`, s.timestamp && `Timestamp: ${esc(s.timestamp)}`,
+            s.signed_at && `${tr('Signed:')} ${esc(s.signed_at)}`, s.issuer && `${tr('Issuer:')} ${esc(s.issuer)}`,
+            s.cert_valid_from && `${tr('Certificate valid')} ${esc(s.cert_valid_from)} → ${esc(s.cert_valid_to)}`,
+            s.coverage && `${tr('Coverage:')} ${esc(tr(s.coverage))}`, s.modification && `${tr('Changes after signing:')} ${esc(tr(s.modification))}`,
+            s.md_algorithm && `${tr('Hash:')} ${esc(s.md_algorithm)}`, s.timestamp && `${tr('Timestamp:')} ${esc(s.timestamp)}`,
           ].filter(Boolean).join('<br>')}</div></div></div>`;
       }).join('')}
-      <p class="muted small">${esc(d.note)}</p></div>`);
+      <p class="muted small">${esc(trMsg(d.note))}</p></div>`);
   }
   start();
 }

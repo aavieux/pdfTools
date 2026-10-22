@@ -4,6 +4,3 @@
 dist
 *.md
 docker-compose.yml
-web/legacy-index.html
-web/css/legacy.css
-web/js/tools/crop-legacy.js

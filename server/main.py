@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool as bg
 from starlette.middleware.gzip import GZipMiddleware
 
-from . import convert, einvoice, pdfops, util
+from . import convert, pdfops, util
 from .util import Workdir, ext, file_response, isolated, release_memory, save_upload, stem
 
 MAX_UPLOAD = int(os.environ.get("MAX_UPLOAD_MB", "300")) * 1024 * 1024
@@ -312,65 +312,6 @@ async def extract_images(file: UploadFile = File(...), min_size: int = Form(32),
 async def blocks(file: UploadFile = File(...)):
     with Workdir() as wd:
         return await bg(pdfops.text_blocks, await save_upload(file, wd, "in.pdf"))
-
-
-# --------------------------------------------------------------------------- e-invoices
-
-@app.post("/api/einvoice/xml")
-def einvoice_xml(payload: dict = Body(...)):
-    model = payload.get("invoice") or {}
-    fmt = payload.get("format") or "xrechnung-cii"
-    xml = einvoice.generate_xml(model, "ubl" if fmt.endswith("ubl") else "cii", fmt.startswith("xrechnung"))
-    return file_response(xml, f"{stem(model.get('number') or 'invoice')}-{fmt}.xml", "xml")
-
-
-@app.post("/api/einvoice/zugferd")
-async def einvoice_zugferd(data: str = Form(...), file: UploadFile | None = File(None), html: str = Form("")):
-    model = _json_field(data, {})
-    xml = await bg(einvoice.generate_xml, model, "cii", False)
-    with Workdir() as wd:
-        if file is not None:
-            pdf_path = await save_upload(file, wd, "invoice.pdf")
-        elif html:
-            pdf_path = wd.file("invoice.pdf")
-            pdf_path.write_bytes(await bg(convert.html_to_pdf, html))
-        else:
-            pdf_path = wd.file("invoice.pdf")
-            pdf_path.write_bytes(await bg(convert.html_to_pdf, einvoice.render_html(einvoice.to_en16931(model, False))))
-        # ZUGFeRD wants a PDF/A-3 container; fall back to the plain PDF if conversion fails.
-        try:
-            base = await bg(pdfops.pdfa, pdf_path, wd, "3", False)
-        except HTTPException:
-            base = pdf_path.read_bytes()
-        out = await bg(einvoice.embed_zugferd, base, xml)
-        return file_response(out, f"{stem(model.get('number') or 'invoice')}-zugferd.pdf")
-
-
-@app.post("/api/einvoice/read")
-async def einvoice_read(file: UploadFile = File(...)):
-    raw = await file.read()
-    if not raw:
-        raise HTTPException(400, "The file is empty.")
-    return await bg(einvoice.read_invoice, raw, file.filename or "")
-
-
-@app.post("/api/einvoice/to-pdf")
-async def einvoice_to_pdf(file: UploadFile = File(...), with_report: str = Form("false")):
-    raw = await file.read()
-    report = await bg(einvoice.read_invoice, raw, file.filename or "")
-    html = await bg(einvoice.render_html, report["data"], report if _bool(with_report) else None)
-    return file_response(await bg(convert.html_to_pdf, html), f"{stem(file.filename)}-readable.pdf")
-
-
-@app.post("/api/einvoice/guess")
-async def einvoice_guess(file: UploadFile = File(...)):
-    import pymupdf
-    raw = await file.read()
-    try:
-        text = "\n".join(p.get_text() for p in pymupdf.open(stream=raw, filetype="pdf"))
-    except Exception:
-        text = ""
-    return await bg(einvoice.guess_from_text, text)
 
 
 @app.exception_handler(Exception)

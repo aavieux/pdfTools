@@ -604,10 +604,3 @@ def compress_image(src: Path, level: str = "medium", target: int = 0, max_side: 
         if best is None:
             return result(smallest or src.read_bytes(), "target-not-reached")
     return result(best)
-
-
-def check_tools():
-    """Used by the health endpoint."""
-    proc = run(["soffice", "--version"], timeout=60)
-    if proc.returncode:
-        fail(proc, "LibreOffice")

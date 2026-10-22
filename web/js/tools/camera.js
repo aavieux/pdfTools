@@ -44,16 +44,16 @@ export function mount(root, tool) {
         <div class="panel-box stack" id="camBox">
           <video class="cam" id="video" playsinline muted hidden></video>
           <div class="row" style="justify-content:center">
-            <button class="btn primary big" id="start">📸 Start camera</button>
-            <button class="btn primary big" id="snap" hidden>📸 Snap page</button>
-            <button class="btn" id="flip" hidden>🔄 Switch camera</button>
-            <label class="btn">📁 Use photos / phone camera<input type="file" id="file" accept="image/*" capture="environment" multiple hidden></label>
+            <button class="btn primary big" id="start">${tr('📸 Start camera')}</button>
+            <button class="btn primary big" id="snap" hidden>${tr('📸 Snap page')}</button>
+            <button class="btn" id="flip" hidden>${tr('🔄 Switch camera')}</button>
+            <label class="btn">${tr('📁 Use photos / phone camera')}<input type="file" id="file" accept="image/*" capture="environment" multiple hidden></label>
           </div>
           <p class="note" id="hint"></p>
         </div>
-        <div class="panel-box stack"><h3 style="margin:0;color:var(--accent)">♡ Your pages <span class="muted small">(drag to reorder, click to rotate)</span></h3><div class="shots" id="shots"><span class="muted small">No pages yet</span></div></div>
+        <div class="panel-box stack"><h3 style="margin:0;color:var(--accent)">${tr('♡ Your pages')} <span class="muted small">${tr('(drag to reorder, click to rotate)')}</span></h3><div class="shots" id="shots"><span class="muted small">${tr('No pages yet')}</span></div></div>
       </div>
-      <div class="panel-box stack sticky-side" id="opts"><h3 style="margin:0;color:var(--accent)">♡ Options</h3></div>
+      <div class="panel-box stack sticky-side" id="opts"><h3 style="margin:0;color:var(--accent)">${tr('♡ Options')}</h3></div>
     </div><div id="result"></div></div>`;
   const shots = []; // { img, rot, id }
   let stream = null;
@@ -65,10 +65,10 @@ export function mount(root, tool) {
     { name: 'margin', label: 'Margin (mm)', type: 'number', value: 0, min: 0 },
     { name: 'quality', label: 'Quality', type: 'range', value: 80, min: 40, max: 95, unit: '%' },
   ], () => drawShots());
-  const go = h('<button class="btn primary big wide">Make PDF ♡</button>');
+  const go = h(`<button class="btn primary big wide">${tr('Make PDF ♡')}</button>`);
   $('#opts', root).append(form.el, go);
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-    $('#hint', root).textContent = 'Live camera needs https — on your phone, use “Use photos / phone camera” to snap pages with the camera app ✿';
+    $('#hint', root).textContent = tr('Live camera needs https — on your phone, use “Use photos / phone camera” to snap pages with the camera app ✿');
     $('#start', root).hidden = true;
   }
 
@@ -83,7 +83,7 @@ export function mount(root, tool) {
       $('#snap', root).hidden = false;
       $('#flip', root).hidden = false;
     } catch (e) {
-      toast(`Camera not available: ${e.message}`, 'error');
+      toast(tr('Camera not available: {error}', { error: e.message }), 'error');
     }
   };
   $('#start', root).onclick = startCam;
@@ -105,7 +105,7 @@ export function mount(root, tool) {
 
   function drawShots() {
     const box = $('#shots', root);
-    if (!shots.length) { box.innerHTML = '<span class="muted small">No pages yet</span>'; return; }
+    if (!shots.length) { box.innerHTML = `<span class="muted small">${tr('No pages yet')}</span>`; return; }
     const filter = form.values().filter;
     box.replaceChildren(...shots.map((s) => {
       const prev = document.createElement('canvas');
@@ -115,7 +115,7 @@ export function mount(root, tool) {
       prev.height = (src.height || src.naturalHeight) * sc;
       prev.getContext('2d').drawImage(src, 0, 0, prev.width, prev.height);
       const out = applyFilter(prev, filter, s.rot);
-      const wrap = h('<div style="position:relative;cursor:pointer" title="Click to rotate"><button class="btn icon" style="position:absolute;top:2px;right:2px;padding:0 6px">✕</button></div>');
+      const wrap = h(`<div style="position:relative;cursor:pointer" title="${tr('Click to rotate')}"><button class="btn icon" style="position:absolute;top:2px;right:2px;padding:0 6px" title="${tr('Remove')}">✕</button></div>`);
       out.style.height = '110px';
       out.style.borderRadius = '10px';
       out.style.boxShadow = 'var(--shadow)';

@@ -35,12 +35,15 @@ export const CATEGORIES = [
   ['extras', 'extras', 'Little helpers', '🧸'],
 ];
 
-const t = (id, cat, icon, name, desc, module, opts = {}, nas = false) => ({ id, cat, icon, name, desc, module, opts, nas });
+// Names and descriptions are shown in the chosen language; search also finds the English words.
+const t = (id, cat, icon, name, desc, module, opts = {}, nas = false) =>
+  ({ id, cat, icon, name: tr(name), desc: tr(desc), module, opts, nas, words: `${tr(name)} ${tr(desc)} ${name} ${desc} ${id}`.toLowerCase() });
 
 export const TOOLS = [
   // Make a PDF
   t('convert-to-pdf', 'to-pdf', '📥', 'Convert to PDF', 'Any file to PDF: Word, Excel, PowerPoint, images, text, EPUB, …', 'convert-to-pdf', { accept: '*' }, true),
   t('camera-pdf', 'to-pdf', '📸', 'Create PDF with a camera', 'Snap pages with your webcam or phone and make a PDF', 'camera'),
+  t('scan-look', 'to-pdf', '📠', 'Make it look scanned', 'Photos and PDF pages become a clean scanned PDF, like the Notes app', 'scan'),
 
   // Adjust a PDF
   t('edit-pdf', 'edit', '🖍️', 'Edit PDF', 'Add text, images, shapes, highlights and notes to a PDF', 'editor-tool', { mode: 'edit' }),
@@ -107,6 +110,30 @@ export const TOOLS = [
 ];
 
 export const TOOL_BY_ID = Object.fromEntries(TOOLS.map((x) => [x.id, x]));
+
+/*
+ * Which files a tool can open (same format as a file input's `accept`), so a finished file can be
+ * handed on to it: '*' = anything, null = the tool doesn't open files. Everything else takes PDFs.
+ * `many` tools take several files at once; the others use the first one.
+ */
+const IMAGES = '.jpg,.jpeg,.jfif,.png,.webp,.gif,.bmp,.heic,.heif,.tif,.tiff';
+const ACCEPTS = {
+  'convert-to-pdf': '*', viewer: '*',
+  'scan-look': `.pdf,${IMAGES}`,
+  ocr: '.pdf,.png,.jpg,.jpeg,.tif,.tiff',
+  'compress-images': `${IMAGES},.svg`,
+  'heic-to-jpg': '.heic,.heif', 'heic-to-png': '.heic,.heif', 'psd-to-png': '.psd,.psb', 'webp-to-jpg': '.webp', 'webp-to-png': '.webp',
+  'camera-pdf': null, 'photo-collage': null, 'create-card': null, 'qr-code': null, password: null,
+};
+const MANY = new Set(['convert-to-pdf', 'scan-look', 'merge', 'assemble', 'search', 'verify-signatures', 'compress', 'web-optimize', 'ocr', 'repair',
+  'flatten', 'pdfa', 'unlock', 'remove-metadata', 'extract-images', 'pdf-to', 'pdf-to-word', 'pdf-to-excel', 'pdf-to-powerpoint', 'pdf-to-images', 'rasterize',
+  'compress-images', 'heic-to-jpg', 'heic-to-png', 'psd-to-png', 'webp-to-jpg', 'webp-to-png']);
+for (const tool of TOOLS) {
+  tool.accept = tool.id in ACCEPTS ? ACCEPTS[tool.id] : '.pdf';
+  tool.many = MANY.has(tool.id);
+}
+GROUPS.forEach((g) => { g[1] = tr(g[1]); });
+CATEGORIES.forEach((c) => { c[2] = tr(c[2]); });
 export const CATEGORY_BY_ID = Object.fromEntries(CATEGORIES.map(([id, group, name, icon]) => [id, { id, group, name, icon }]));
 export const GROUP_BY_ID = Object.fromEntries(GROUPS.map(([id, name, icon, color]) => [id, { id, name, icon, color }]));
 for (const tool of TOOLS) tool.color = GROUP_BY_ID[CATEGORY_BY_ID[tool.cat].group].color;

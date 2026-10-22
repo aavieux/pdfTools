@@ -29,9 +29,9 @@ export function extOf(name) {
 }
 
 export function fmtBytes(n) {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / 1024 / 1024).toFixed(2)} MB`;
+  if (n < 1024) return `${n} ${tr('B')}`;
+  if (n < 1024 * 1024) return `${fmtNum(n / 1024, 1)} ${tr('KB')}`;
+  return `${fmtNum(n / 1024 / 1024, 2)} ${tr('MB')}`;
 }
 
 /* ---------------- Feedback ---------------- */
@@ -41,7 +41,7 @@ export function toast(msg, type = '') {
   const el = document.createElement('div');
   el.className = `toast ${type}`;
   el.innerHTML = type === 'error' ? '' : catSVG(resolveBuddy('main'), 1.5);
-  el.appendChild(document.createTextNode(msg));
+  el.appendChild(document.createTextNode(trMsg(msg)));
   box.appendChild(el);
   while (box.children.length > 3) box.firstChild.remove();
   const life = type === 'error' ? 5000 : 2400;
@@ -52,13 +52,13 @@ export function toast(msg, type = '') {
 let busyDepth = 0;
 export function busy(text = 'Working…', sub = '') {
   busyDepth++;
-  $('#busyText').textContent = text;
-  $('#busySub').textContent = sub;
+  $('#busyText').textContent = trMsg(text);
+  $('#busySub').textContent = trMsg(sub);
   $('#busy').hidden = false;
 }
 export function busyText(text, sub = '') {
-  $('#busyText').textContent = text;
-  $('#busySub').textContent = sub;
+  $('#busyText').textContent = trMsg(text);
+  $('#busySub').textContent = trMsg(sub);
 }
 export function done() {
   busyDepth = Math.max(0, busyDepth - 1);
@@ -124,7 +124,41 @@ export function pickFiles({ accept = '', multiple = false } = {}) {
   });
 }
 
-function acceptMatches(file, accept) {
+/* ---------------- Handing files on to another tool ---------------- */
+
+/**
+ * Files travel from one tool to the next without a download in between: send(files), then open
+ * a tool, and its first drop zone (or the crop tool) opens them as if they had been dropped.
+ * `current` is what the open tool is working on and `live`, when a tool sets it, builds that
+ * file with the edits made so far; the “↪ Other tool” button in the top bar uses them.
+ */
+export const Handoff = {
+  pending: null,
+  current: [],
+  live: null,
+  listeners: new Set(),
+  send(files) { this.pending = files; },
+  take() { const f = this.pending; this.pending = null; return f; },
+  note(files, append = false) {
+    this.current = append ? [...this.current, ...files] : [...files];
+    this.listeners.forEach((fn) => fn());
+  },
+  reset() { this.pending = null; this.live = null; this.note([]); },
+  onChange(fn) { this.listeners.add(fn); },
+};
+
+/** A tool result ({ name, data, type }) as a File another tool can open. */
+export function outputFile(o) {
+  return o instanceof File ? o : new File([o.data instanceof Blob ? o.data : new Blob([o.data])], o.name, { type: o.type || o.data?.type || '' });
+}
+
+/** Open the “continue in another tool” picker (lives in handoff.js, loaded when needed). */
+export async function continueWith(files, opts) {
+  const { openToolPicker } = await import('./handoff.js');
+  openToolPicker(files, opts);
+}
+
+export function acceptMatches(file, accept) {
   if (!accept || accept === '*') return true;
   const ext = `.${extOf(file.name)}`;
   return accept.split(',').map((s) => s.trim().toLowerCase()).some((a) =>
@@ -136,18 +170,20 @@ function acceptMatches(file, accept) {
  * Also accepts files dropped anywhere on the window while it is on screen.
  */
 export function dropzone({ accept = '.pdf', multiple = false, title, hint = '', compact = false, onFiles }) {
-  const label = title || (multiple ? 'Drop your files here ♡' : 'Drop your file here ♡');
+  const label = trMsg(title || (multiple ? 'Drop your files here ♡' : 'Drop your file here ♡'));
   const el = h(`<div class="dropzone${compact ? ' compact' : ''}" tabindex="0" role="button">
       ${compact ? '' : '<span class="cat" data-cat="main" data-size="5"></span>'}
       <h2>${esc(label)}</h2>
-      <p>or click to choose ${multiple ? 'files' : 'a file'}${accept && accept !== '*' && !compact ? ` <span class="small">(${esc(accept.replaceAll(',', ', '))})</span>` : ''}</p>
-      ${hint ? `<p class="note">${esc(hint)}</p>` : ''}
+      <p>${tr(multiple ? 'or click to choose files' : 'or click to choose a file')}${accept && accept !== '*' && !compact ? ` <span class="small">(${esc(accept.replaceAll(',', ', '))})</span>` : ''}</p>
+      ${hint ? `<p class="note">${esc(trMsg(hint))}</p>` : ''}
     </div>`);
   const handle = (files) => {
     const ok = files.filter((f) => acceptMatches(f, accept));
-    if (!ok.length) { toast(`Please choose ${accept === '.pdf' ? 'a PDF' : `a ${accept} file`}`, 'error'); return; }
-    if (ok.length < files.length) toast(`Skipped ${files.length - ok.length} file(s) of the wrong type`, 'error');
-    onFiles(multiple ? ok : [ok[0]]);
+    if (!ok.length) { toast(accept === '.pdf' ? tr('Please choose a PDF') : tr('Please choose a {type} file', { type: accept }), 'error'); return; }
+    if (ok.length < files.length) toast(tr('Skipped {n} file(s) of the wrong type', { n: files.length - ok.length }), 'error');
+    const chosen = multiple ? ok : [ok[0]];
+    Handoff.note(chosen, compact);
+    onFiles(chosen);
   };
   el.addEventListener('click', async () => handle(await pickFiles({ accept: accept === '*' ? '' : accept, multiple })));
   el.addEventListener('keydown', async (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } });
@@ -160,6 +196,9 @@ export function dropzone({ accept = '.pdf', multiple = false, title, hint = '', 
     handle([...e.dataTransfer.files]);
   });
   el._handle = handle;
+  // Files handed on from another tool open in the first drop zone of the new tool.
+  const handed = Handoff.take();
+  if (handed) setTimeout(() => { if (el.isConnected) handle(handed); }, 0);
   return el;
 }
 
@@ -170,14 +209,14 @@ export async function openPdfjs(bytes, name = 'PDF') {
   const task = pdfjsLib.getDocument({ data: bytes.slice(), isEvalSupported: false });
   task.onPassword = (update, reason) => {
     const pw = prompt(reason === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD
-      ? `Wrong password for ${name}. Try again:` : `${name} is password protected. Password:`);
+      ? tr('Wrong password for {name}. Try again:', { name }) : tr('{name} is password protected. Password:', { name }));
     if (pw === null) task.destroy(); else update(pw);
   };
   try {
     return await task.promise;
   } catch (e) {
-    if (e && e.name === 'PasswordException') throw new Error(`${name} needs a password. Use “Unlock PDF” first ♡`);
-    throw new Error(`Could not read ${name}: ${e.message || e}`);
+    if (e && e.name === 'PasswordException') throw new Error(tr('{name} needs a password. Use “Unlock PDF” first ♡', { name }));
+    throw new Error(tr('Could not read {name}: {error}', { name, error: e.message || e }));
   }
 }
 
@@ -190,9 +229,9 @@ export async function openPdfLib(bytes, name = 'PDF') {
       try {
         return await PDFLib.PDFDocument.load(bytes, { updateMetadata: false, ignoreEncryption: true });
       } catch { /* fall through */ }
-      throw new Error(`${name} is encrypted. Use “Unlock PDF” first ♡`);
+      throw new Error(tr('{name} is encrypted. Use “Unlock PDF” first ♡', { name }));
     }
-    throw new Error(`Could not read ${name}: ${e.message || e}`);
+    throw new Error(tr('Could not read {name}: {error}', { name, error: e.message || e }));
   }
 }
 
@@ -276,20 +315,20 @@ export function lazyThumb(box, doc, index, { width = 160, rotation = 0 } = {}) {
 export function parseRange(text, count) {
   const out = [];
   const parts = String(text).split(/[,;\s]+/).filter(Boolean);
-  if (!parts.length) throw new Error('Please enter pages, e.g. 1-3, 5');
+  if (!parts.length) throw new Error(tr('Please enter pages, e.g. 1-3, 5'));
   for (const part of parts) {
     const m = part.match(/^(\d*)\s*-\s*(\d*)$/);
     if (m) {
       const a = m[1] ? parseInt(m[1], 10) : 1;
       const b = m[2] ? parseInt(m[2], 10) : count;
-      if (a < 1 || b > count || a > b) throw new Error(`Invalid range “${part}” (the document has ${count} pages)`);
+      if (a < 1 || b > count || a > b) throw new Error(tr('Invalid range “{part}” (the document has {count} pages)', { part, count }));
       for (let k = a; k <= b; k++) out.push(k - 1);
     } else if (/^\d+$/.test(part)) {
       const k = parseInt(part, 10);
-      if (k < 1 || k > count) throw new Error(`Page ${k} does not exist (the document has ${count} pages)`);
+      if (k < 1 || k > count) throw new Error(tr('Page {k} does not exist (the document has {count} pages)', { k, count }));
       out.push(k - 1);
     } else {
-      throw new Error(`Cannot understand “${part}”`);
+      throw new Error(tr('Cannot understand “{part}”', { part }));
     }
   }
   return out;
@@ -312,19 +351,6 @@ export async function loadImage(src) {
   img.src = src;
   await img.decode();
   return img;
-}
-
-/** Decode any image the browser understands; HEIC/TIFF fall back to the NAS. */
-export async function decodeImage(file) {
-  const url = URL.createObjectURL(file);
-  try {
-    return await loadImage(url);
-  } catch {
-    const blob = await apiBlob('/api/images/convert', { file, fields: { to: 'png' } });
-    return loadImage(URL.createObjectURL(blob));
-  } finally {
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  }
 }
 
 export function canvasToBlob(canvas, type = 'image/png', quality = 0.92) {
@@ -350,17 +376,17 @@ async function apiFetch(path, { file, files, fields = {}, json } = {}) {
   try {
     res = await fetch(path, { method: 'POST', body, headers });
   } catch {
-    throw new Error('Cannot reach the NAS server. Is the container running? ♡');
+    throw new Error(tr('Cannot reach the NAS server. Is the container running? ♡'));
   }
   if (!res.ok) {
-    let msg = `Server error ${res.status}`;
+    let msg = tr('Server error {status}', { status: res.status });
     try {
       const j = await res.json();
       msg = j.detail || j.error || msg;
     } catch { /* not JSON */ }
     if (res.status === 404 && location.protocol === 'file:') msg = 'This tool needs the NAS server; open the app from the container.';
     if (res.status === 413) msg = 'That file is too big for the server.';
-    throw new Error(msg);
+    throw new Error(trMsg(msg));
   }
   return res;
 }
@@ -450,10 +476,10 @@ const ZOOM_PRESETS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
  * user pinches or Ctrl+scrolls.
  */
 export function zoomControls(target, { fit = 'width', fitLabel = 'Fit width' } = {}) {
-  const el = h(`<div class="zoombar" title="Tip: pinch, or hold Ctrl/⌘ and scroll, to zoom">
-      <button type="button" class="btn icon" data-z="-1" title="Zoom out">−</button>
-      <select aria-label="Zoom"><option value="${fit}">${esc(fitLabel)}</option>${ZOOM_PRESETS.map((z) => `<option value="${z}">${Math.round(z * 100)}%</option>`).join('')}<option value="custom" hidden></option></select>
-      <button type="button" class="btn icon" data-z="1" title="Zoom in">+</button>
+  const el = h(`<div class="zoombar" title="${esc(tr('Tip: pinch, or hold Ctrl/⌘ and scroll, to zoom'))}">
+      <button type="button" class="btn icon" data-z="-1" title="${esc(tr('Zoom out'))}">−</button>
+      <select aria-label="${esc(tr('Zoom'))}"><option value="${fit}">${esc(tr(fitLabel))}</option>${ZOOM_PRESETS.map((z) => `<option value="${z}">${Math.round(z * 100)}%</option>`).join('')}<option value="custom" hidden></option></select>
+      <button type="button" class="btn icon" data-z="1" title="${esc(tr('Zoom in'))}">+</button>
     </div>`);
   const sel = el.querySelector('select');
   const custom = sel.querySelector('[value="custom"]');
@@ -527,7 +553,7 @@ export function zoomablePreview(box, draw) {
 export function toolHeader(tool) {
   return `<div class="tool-head" style="--c:${tool.color}">
     <div class="card-ico">${tool.icon}</div>
-    <div><h1>${esc(tool.name)}</h1><p>${esc(tool.desc)}${tool.nas ? ' · <span class="small">runs on your NAS</span>' : ' · <span class="small">stays in your browser</span>'}</p></div>
+    <div><h1>${esc(tool.name)}</h1><p>${esc(tool.desc)} · <span class="small">${tr(tool.nas ? 'runs on your NAS' : 'stays in your browser')}</span></p></div>
     <span class="cat" data-cat="friend" data-n="${tool.id.length}" data-size="3"></span>
   </div>`;
 }
@@ -543,23 +569,23 @@ export function optionsForm(spec, onChange) {
   for (const f of spec) {
     let ctrl;
     const id = `f_${f.name}_${Math.random().toString(36).slice(2, 7)}`;
-    const attrs = `id="${id}" name="${f.name}"${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''}${f.min !== undefined ? ` min="${f.min}"` : ''}${f.max !== undefined ? ` max="${f.max}"` : ''}${f.step !== undefined ? ` step="${f.step}"` : ''}`;
+    const attrs = `id="${id}" name="${f.name}"${f.placeholder ? ` placeholder="${esc(tr(f.placeholder))}"` : ''}${f.min !== undefined ? ` min="${f.min}"` : ''}${f.max !== undefined ? ` max="${f.max}"` : ''}${f.step !== undefined ? ` step="${f.step}"` : ''}`;
     if (f.type === 'select') {
-      ctrl = `<select ${attrs}>${f.options.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(f.value) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+      ctrl = `<select ${attrs}>${f.options.map(([v, l]) => `<option value="${esc(v)}"${String(v) === String(f.value) ? ' selected' : ''}>${esc(tr(l))}</option>`).join('')}</select>`;
     } else if (f.type === 'radio') {
-      ctrl = `<div class="radio-tiles">${f.options.map(([v, l]) => `<label><input type="radio" name="${id}" value="${esc(v)}"${String(v) === String(f.value) ? ' checked' : ''}>${esc(l)}</label>`).join('')}</div>`;
+      ctrl = `<div class="radio-tiles">${f.options.map(([v, l]) => `<label><input type="radio" name="${id}" value="${esc(v)}"${String(v) === String(f.value) ? ' checked' : ''}>${esc(tr(l))}</label>`).join('')}</div>`;
     } else if (f.type === 'checkbox') {
       ctrl = `<input type="checkbox" ${attrs}${f.value ? ' checked' : ''}>`;
     } else if (f.type === 'textarea') {
       ctrl = `<textarea ${attrs} rows="${f.rows || 4}">${esc(f.value ?? '')}</textarea>`;
     } else if (f.type === 'range') {
-      ctrl = `<div class="row"><input type="range" ${attrs} value="${esc(f.value ?? '')}" style="flex:1"><output>${esc(f.value ?? '')}</output>${f.unit ? `<span class="muted small">${esc(f.unit)}</span>` : ''}</div>`;
+      ctrl = `<div class="row"><input type="range" ${attrs} value="${esc(f.value ?? '')}" style="flex:1"><output>${esc(f.value ?? '')}</output>${f.unit ? `<span class="muted small">${esc(tr(f.unit))}</span>` : ''}</div>`;
     } else {
       ctrl = `<input type="${f.type || 'text'}" ${attrs} value="${esc(f.value ?? '')}">`;
     }
     const row = f.type === 'checkbox'
-      ? h(`<label class="field check" for="${id}">${ctrl}<span>${esc(f.label)}</span></label>`)
-      : h(`<label class="field"${f.type === 'radio' ? '' : ` for="${id}"`}><span>${esc(f.label)}</span>${ctrl}${f.hint ? `<span class="hint">${esc(f.hint)}</span>` : ''}</label>`);
+      ? h(`<label class="field check" for="${id}">${ctrl}<span>${esc(tr(f.label))}</span></label>`)
+      : h(`<label class="field"${f.type === 'radio' ? '' : ` for="${id}"`}><span>${esc(tr(f.label))}</span>${ctrl}${f.hint ? `<span class="hint">${esc(tr(f.hint))}</span>` : ''}</label>`);
     rows.push([f, row]);
     el.appendChild(row);
   }
@@ -583,11 +609,12 @@ export function optionsForm(spec, onChange) {
   el.addEventListener('input', () => { refresh(); onChange?.(values()); });
   el.addEventListener('change', () => { refresh(); onChange?.(values()); });
   refresh();
-  return { el, values, set(name, value) {
+  return { el, values, refresh, set(name, value) {
     const row = rows.find(([f]) => f.name === name)?.[1];
     if (!row) return;
     const input = row.querySelector('input,select,textarea');
-    if (input.type === 'checkbox') input.checked = !!value; else input.value = value;
+    if (input.type === 'radio') row.querySelectorAll('input').forEach((r) => { r.checked = r.value === String(value); });
+    else if (input.type === 'checkbox') input.checked = !!value; else input.value = value;
     refresh();
   } };
 }
@@ -604,17 +631,22 @@ export const PAGES_FIELDS = [
  */
 export function showResult(container, outputs, { title = 'All done! ♡', again, extra = '', zipName = 'maria-pdf-tools.zip' } = {}) {
   const blobs = outputs.map((o) => ({ ...o, blob: o.data instanceof Blob ? o.data : new Blob([o.data], { type: o.type || 'application/octet-stream' }) }));
+  // ZIPs can't be opened by any tool, so only the other files can be handed on.
+  const onward = blobs.filter((b) => extOf(b.name) !== 'zip').map((b) => outputFile({ name: b.name, data: b.blob, type: b.blob.type }));
   const el = h(`<div class="result">
       <span class="cat bounce" data-cat="friend" data-n="${Math.floor(Math.random() * 12)}" data-size="5"></span>
-      <h2>${esc(title)}</h2>
+      <h2>${esc(trMsg(title))}</h2>
       ${extra}
-      ${blobs.length > 1 ? `<p class="muted small">${blobs.length} files · your browser may ask once whether this page may download several files ✿</p><ul class="result-list">${blobs.map((b, i) => `<li><span>${esc(b.name)} <span class="muted small">${fmtBytes(b.blob.size)}</span></span><button class="btn" data-i="${i}">Download</button></li>`).join('')}</ul>` : ''}
+      ${blobs.length > 1 ? `<p class="muted small">${tr('{n} files · your browser may ask once whether this page may download several files ✿', { n: blobs.length })}</p><ul class="result-list">${blobs.map((b, i) => `<li><span>${esc(b.name)} <span class="muted small">${fmtBytes(b.blob.size)}</span></span><button class="btn" data-i="${i}">${tr('Download')}</button></li>`).join('')}</ul>` : ''}
       <div class="row">
-        ${blobs.length === 1 ? `<button class="btn primary big" data-dl>Download ${esc(blobs[0].name)} <span class="small">(${fmtBytes(blobs[0].blob.size)})</span></button>` : ''}
-        ${blobs.length > 1 ? `<button class="btn primary big" data-all>⬇ Download all ${blobs.length} files</button><button class="btn big" data-zip>🗜 Download as ZIP</button>` : ''}
-        ${blobs.length === 1 && blobs[0].blob.type === 'application/pdf' ? '<button class="btn" data-view>Preview</button>' : ''}
-        ${again ? '<button class="btn" data-again>↺ Start over</button>' : ''}
+        ${blobs.length === 1 ? `<button class="btn primary big" data-dl>${tr('Download')} ${esc(blobs[0].name)} <span class="small">(${fmtBytes(blobs[0].blob.size)})</span></button>` : ''}
+        ${blobs.length > 1 ? `<button class="btn primary big" data-all>${tr('⬇ Download all {n} files', { n: blobs.length })}</button><button class="btn big" data-zip>${tr('🗜 Download as ZIP')}</button>` : ''}
+        ${blobs.length === 1 && blobs[0].blob.type === 'application/pdf' ? `<button class="btn" data-view>${tr('Preview')}</button>` : ''}
+        ${again ? `<button class="btn" data-again>${tr('↺ Start over')}</button>` : ''}
       </div>
+      ${onward.length ? `<div class="row onward"><span class="muted small">${tr('What next?')}</span>
+        <button class="btn" data-next="save">${tr('💾 Save & open in another tool')}</button>
+        <button class="btn" data-next="">${tr('↪ Open in another tool without saving')}</button></div>` : ''}
     </div>`);
   el.addEventListener('click', async (e) => {
     const b = e.target.closest('button');
@@ -630,6 +662,7 @@ export function showResult(container, outputs, { title = 'All done! ♡', again,
       b.disabled = false;
     }
     if (b.hasAttribute('data-again')) again();
+    if (b.dataset.next !== undefined) continueWith(onward, { save: b.dataset.next === 'save' });
   });
   container.replaceChildren(el);
   celebrate();
@@ -646,7 +679,7 @@ export function fileList({ sortable = true, onChange } = {}) {
   const renumber = () => $$('.file-card', el).forEach((c, i) => { c.querySelector('.num').textContent = i + 1; });
   const render = async (item) => {
     const card = h(`<div class="file-card" data-id="${item.id}">
-        <span class="num"></span><button class="x" title="Remove">✕</button>
+        <span class="num"></span><button class="x" title="${esc(tr('Remove'))}">✕</button>
         <div class="thumb-box"><span class="cat sleeping" data-cat="friend" data-n="2" data-size="3"></span></div>
         <div class="fname" title="${esc(item.file.name)}">${esc(item.file.name)}</div>
         <div class="fmeta">${fmtBytes(item.file.size)}</div>
@@ -665,7 +698,7 @@ export function fileList({ sortable = true, onChange } = {}) {
       if (ext === 'pdf') {
         const doc = await openPdfjs(await readBytes(item.file), item.file.name);
         item.pages = doc.numPages;
-        card.querySelector('.fmeta').textContent = `${fmtBytes(item.file.size)} · ${doc.numPages} page${doc.numPages === 1 ? '' : 's'}`;
+        card.querySelector('.fmeta').textContent = `${fmtBytes(item.file.size)} · ${trn(doc.numPages, '{n} page', '{n} pages')}`;
         const page = await doc.getPage(1);
         const c = await queueRender(() => renderPage(page, { width: 260 }));
         box.replaceChildren(c);
@@ -678,7 +711,7 @@ export function fileList({ sortable = true, onChange } = {}) {
       }
     } catch (e) {
       box.innerHTML = '<div style="font-size:30px">🙀</div>';
-      card.querySelector('.fmeta').textContent = e.message;
+      card.querySelector('.fmeta').textContent = trMsg(e.message);
     }
   };
   if (sortable) {
@@ -741,7 +774,7 @@ export function simpleTool(root, cfg) {
       onFiles: (files) => configure(files),
     });
     st.replaceChildren(dz);
-    if (cfg.intro) st.appendChild(h(`<p class="note sticky">${cfg.intro}</p>`));
+    if (cfg.intro) st.appendChild(h(`<p class="note sticky">${tr(cfg.intro)}</p>`));
   };
   const configure = (files) => {
     const list = fileList({ sortable: !!cfg.multiple });
@@ -753,7 +786,7 @@ export function simpleTool(root, cfg) {
     const layout = h(`<div class="cols">
         <div class="stack" id="left"></div>
         <div class="panel-box stack sticky-side" id="right">
-          <h3 style="margin:0;color:var(--accent)">♡ Options</h3>
+          <h3 style="margin:0;color:var(--accent)">${tr('♡ Options')}</h3>
         </div>
       </div>`);
     const left = $('#left', layout);
@@ -762,19 +795,19 @@ export function simpleTool(root, cfg) {
     if (cfg.multiple) {
       const more = dropzone({ accept: cfg.accept ?? '.pdf', multiple: true, compact: true, title: '+ Add more files', onFiles: (f) => list.add(f) });
       left.appendChild(more);
-      if (list && cfg.sortHint !== false) left.appendChild(h('<p class="note">psst~ drag the cards to change the order ♡</p>'));
+      if (list && cfg.sortHint !== false) left.appendChild(h(`<p class="note">${tr('psst~ drag the cards to change the order ♡')}</p>`));
     }
     if (spec.length || zipOption) right.appendChild(form.el);
-    else right.appendChild(h('<p class="muted small" style="margin:0">No options needed ~ just press the button ✿</p>'));
+    else right.appendChild(h(`<p class="muted small" style="margin:0">${tr('No options needed ~ just press the button ✿')}</p>`));
     if (cfg.extraPanel) right.appendChild(cfg.extraPanel(form));
-    const go = h(`<button class="btn primary big wide">${esc(cfg.actionLabel || tool.name)} ♡</button>`);
+    const go = h(`<button class="btn primary big wide">${esc(cfg.actionLabel ? tr(cfg.actionLabel) : tool.name)} ♡</button>`);
     right.appendChild(go);
     const result = h('<div></div>');
     st.replaceChildren(layout, result);
     list.add(files);
     if (cfg.preview) {
       // Live preview: run the tool on the first file and show the first page of the result.
-      const box = h('<div class="panel-box stack"><div class="row between"><h3 style="margin:0;color:var(--accent)">♡ Preview <span class="muted small">(first page)</span></h3></div><div class="sheet-wrap" style="min-height:200px;max-height:75vh"></div></div>');
+      const box = h(`<div class="panel-box stack"><div class="row between"><h3 style="margin:0;color:var(--accent)">${tr('♡ Preview')} <span class="muted small">${tr('(first page)')}</span></h3></div><div class="sheet-wrap" style="min-height:200px;max-height:75vh"></div></div>`);
       left.appendChild(box);
       const wrap = $('.sheet-wrap', box);
       let page = null;
@@ -801,7 +834,7 @@ export function simpleTool(root, cfg) {
             page = await doc.getPage(1);
             await zoom.refresh();
           } catch (e) {
-            if (my === seq) wrap.innerHTML = `<p class="muted">${esc(e.message)}</p>`;
+            if (my === seq) wrap.innerHTML = `<p class="muted">${esc(trMsg(e.message))}</p>`;
           }
         }, 350);
       };

@@ -1,17 +1,19 @@
-import { $, esc, toast } from './core.js';
+import { $, Handoff, esc, toast, withBusy } from './core.js';
 import { CATEGORIES, TOOLS, TOOL_BY_ID, orderedGroups } from './registry.js';
 import { openSettings } from './settings.js';
+import { openToolPicker } from './handoff.js';
 
 const app = $('#app');
 let unmount = null;
 let onHome = false;
-const lastFilter = { q: '', group: Prefs.get('filter') || '' };
+const lastFilter = { q: '', group: Prefs.get('filter') || '', showHidden: false };
 
 const GREETINGS = [
   'Hi Maria! What are we making today? ♡',
   'Hello Maria ~ pick a tool, any tool ✿',
   'Welcome back, Maria! Your buddies missed you ♡',
-];
+].map((g) => tr(g));
+const APP_NAME = tr("Maria's PDF Tools");
 const AUTHOR = 'aleksandargarkov0@gmail.com';
 
 const favorites = () => Prefs.get('favorites').filter((id) => TOOL_BY_ID[id]);
@@ -19,22 +21,35 @@ function toggleFavorite(id) {
   const favs = favorites();
   const on = !favs.includes(id);
   Prefs.set('favorites', on ? [...favs, id] : favs.filter((x) => x !== id));
-  toast(on ? `${TOOL_BY_ID[id].name} added to favourites ★` : `${TOOL_BY_ID[id].name} removed from favourites`);
+  toast(tr(on ? '{name} added to favourites ★' : '{name} removed from favourites', { name: TOOL_BY_ID[id].name }));
 }
 
-function card(t, favs) {
+const hiddenTools = () => Prefs.get('hiddenTools').filter((id) => TOOL_BY_ID[id]);
+function toggleHidden(id) {
+  const hidden = hiddenTools();
+  const on = !hidden.includes(id);
+  Prefs.set('hiddenTools', on ? [...hidden, id] : hidden.filter((x) => x !== id));
+  toast(tr(on ? '{name} is hidden — “🙈 Hidden” shows it again' : '{name} is back ♡', { name: TOOL_BY_ID[id].name }));
+}
+
+const EYE = '<svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg class="icon-svg" viewBox="0 0 24 24" width="15" height="15"><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.2 3.1M6.6 6.6C3.7 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"/></svg>';
+
+function card(t, favs, hidden = []) {
   const fav = favs.includes(t.id);
-  return `<div class="card-wrap" style="--c:${t.color}">
+  const off = hidden.includes(t.id);
+  return `<div class="card-wrap${off ? ' is-hidden' : ''}" style="--c:${t.color}">
     <a class="card" href="#/${t.id}">
       <div class="card-ico">${t.icon}</div>
       <div class="card-text"><div class="card-title">${esc(t.name)}</div><div class="card-desc">${esc(t.desc)}</div></div>
-      <span class="where" title="${t.nas ? 'Runs on your NAS — the file is sent to your own server' : 'Runs in your browser — the file never leaves this computer'}">${t.nas ? '☁' : '♡'}</span>
+      <span class="where" title="${tr(t.nas ? 'Runs on your NAS — the file is sent to your own server' : 'Runs in your browser — the file never leaves this computer')}">${t.nas ? '☁' : '♡'}</span>
     </a>
-    <button class="fav${fav ? ' on' : ''}" data-fav="${t.id}" title="${fav ? 'Remove from favourites' : 'Add to favourites'}" aria-pressed="${fav}">${fav ? '★' : '☆'}</button>
+    <button class="fav${fav ? ' on' : ''}" data-fav="${t.id}" title="${tr(fav ? 'Remove from favourites' : 'Add to favourites')}" aria-pressed="${fav}">${fav ? '★' : '☆'}</button>
+    <button class="hide-tool" data-hide="${t.id}" title="${tr(off ? 'Show this tool again' : 'Hide this tool')}" aria-pressed="${off}">${off ? EYE : EYE_OFF}</button>
   </div>`;
 }
 
-const grid = (tools, favs) => `<div class="grid">${tools.map((t) => card(t, favs)).join('')}</div>`;
+const grid = (tools, favs, hidden) => `<div class="grid">${tools.map((t) => card(t, favs, hidden)).join('')}</div>`;
 
 /** Layout preferences → attributes on the home page (card style, columns). */
 function applyLayout() {
@@ -50,7 +65,7 @@ function home() {
   document.body.classList.remove('fullscreen-tool');
   $('#crumbs').textContent = '';
   $('#homeLink').hidden = true;
-  document.title = "Maria's PDF Tools";
+  document.title = APP_NAME;
   app.innerHTML = `<div class="home">
     <section class="hero">
       <div class="hero-cat">
@@ -59,16 +74,16 @@ function home() {
       </div>
       <div>
         <h1>${esc(GREETINGS[new Date().getDate() % GREETINGS.length])}</h1>
-        <p>${TOOLS.length} little PDF helpers, all in one place.</p>
-        <p class="note">psst~ tap the ☆ on a tool to keep it at the top. Themes, layout and buddies are under 🎀 Customize ↗</p>
+        <p>${tr('{n} little PDF helpers, all in one place.', { n: TOOLS.length })}</p>
+        <p class="note">${tr('psst~ tap the ☆ on a tool to keep it at the top. Themes, layout and buddies are under 🎀 Customize ↗')}</p>
       </div>
     </section>
     <label class="search">
       <span aria-hidden="true">🔎</span>
-      <input type="search" id="q" placeholder="Search tools… e.g. merge, word, sign, compress" autocomplete="off" value="${esc(lastFilter.q)}">
+      <input type="search" id="q" placeholder="${esc(tr('Search tools… e.g. merge, word, sign, compress'))}" autocomplete="off" value="${esc(lastFilter.q)}">
     </label>
     <div class="cat-chips" id="chips"></div>
-    <p class="where-legend"><span><b>♡</b> stays in your browser</span><span><b>☁</b> runs on your NAS</span></p>
+    <p class="where-legend"><span><b>♡</b> ${tr('stays in your browser')}</span><span><b>☁</b> ${tr('runs on your NAS')}</span></p>
     <div id="cats"></div>
     <div class="nap">
       <span class="zzz"><i>z</i><i>z</i><i>z</i></span>
@@ -76,7 +91,7 @@ function home() {
       <span class="cat" data-cat="friend" data-n="1" data-size="3"></span>
       <span class="cat flip" data-cat="friend" data-n="2" data-size="3"></span>
     </div>
-    <footer class="made-by">Want a website like this one? <br> Just send me an email: <a href="mailto:${AUTHOR}">${AUTHOR}</a></footer>
+    <footer class="made-by">${tr('Want a website like this one?')} <br> ${tr('Just send me an email:')} <a href="mailto:${AUTHOR}">${AUTHOR}</a></footer>
   </div>`;
   applyLayout();
 
@@ -84,12 +99,15 @@ function home() {
 
   const renderChips = () => {
     const favs = favorites();
+    const nHidden = hiddenTools().length;
+    if (!nHidden) lastFilter.showHidden = false;
     if (lastFilter.group === 'favorites' && !favs.length) lastFilter.group = '';
     if (lastFilter.group && lastFilter.group !== 'favorites' && !groups().some((g) => g.id === lastFilter.group)) lastFilter.group = '';
     const chip = (id, label, color) => `<button class="chip${lastFilter.group === id ? ' on' : ''}" data-group="${id}"${color ? ` style="--c:${color}"` : ''}>${label}</button>`;
-    $('#chips').innerHTML = chip('', 'All tools', '')
-      + (favs.length ? chip('favorites', `★ Favourites <span class="count">${favs.length}</span>`, 'hsl(43 68% 50%)') : '')
-      + groups().map((g) => chip(g.id, `<span class="dot"></span>${g.icon} ${esc(g.name)}`, g.color)).join('');
+    $('#chips').innerHTML = chip('', tr('All tools'), '')
+      + (favs.length ? chip('favorites', `${tr('★ Favourites')} <span class="count">${favs.length}</span>`, 'hsl(43 68% 50%)') : '')
+      + groups().map((g) => chip(g.id, `<span class="dot"></span>${g.icon} ${esc(g.name)}`, g.color)).join('')
+      + (nHidden ? `<button class="chip hidden-chip${lastFilter.showHidden ? ' on' : ''}" data-show-hidden aria-pressed="${lastFilter.showHidden}" title="${esc(tr(lastFilter.showHidden ? 'Put the hidden tools away again' : 'Show the tools you hid'))}">🙈 ${tr('Hidden')} <span class="count">${nHidden}</span></button>` : '');
   };
 
   const render = () => {
@@ -99,7 +117,10 @@ function home() {
     const subcats = Prefs.get('subcats');
     const q = lastFilter.q.trim().toLowerCase();
     const words = q.split(/\s+/).filter(Boolean);
-    const match = (t) => !words.length || words.every((w) => `${t.name} ${t.desc} ${t.id}`.toLowerCase().includes(w));
+    const hidden = hiddenTools();
+    // Hidden tools stay away unless “🙈 Hidden” is on, or a search may find them (Customize → Layout).
+    const showHidden = lastFilter.showHidden || (!!words.length && Prefs.get('searchHidden'));
+    const match = (t) => (showHidden || !hidden.includes(t.id)) && (!words.length || words.every((w) => t.words.includes(w)));
     // While searching, show every match even in collapsed groups.
     const isOpen = (id) => !!words.length || !collapsed.includes(id);
     const section = (id, title, color, body) => `<section class="group${isOpen(id) ? '' : ' collapsed'}" style="--c:${color}">
@@ -108,7 +129,7 @@ function home() {
     const parts = [];
     const favTools = favs.map((id) => TOOL_BY_ID[id]).filter(match);
     if (favTools.length && (!lastFilter.group || lastFilter.group === 'favorites')) {
-      parts.push(section('favorites', '★ Your favourites', 'hsl(43 68% 50%)', grid(favTools, favs)));
+      parts.push(section('favorites', tr('★ Your favourites'), 'hsl(43 68% 50%)', grid(favTools, favs, hidden)));
     }
     if (lastFilter.group !== 'favorites') {
       for (const g of groups()) {
@@ -118,12 +139,14 @@ function home() {
           .filter((c) => c.tools.length);
         if (!cats.length) continue;
         const body = subcats && cats.length > 1
-          ? cats.map((c) => `<section class="category"><h3>${c.icon} ${esc(c.name)}</h3>${grid(c.tools, favs)}</section>`).join('')
-          : grid(cats.flatMap((c) => c.tools), favs);
+          ? cats.map((c) => `<section class="category"><h3>${c.icon} ${esc(c.name)}</h3>${grid(c.tools, favs, hidden)}</section>`).join('')
+          : grid(cats.flatMap((c) => c.tools), favs, hidden);
         parts.push(section(g.id, `${g.icon} ${esc(g.name)}`, g.color, body));
       }
     }
-    $('#cats').innerHTML = parts.join('') || `<div class="empty-search"><span class="cat" data-cat="main" data-size="5"></span><p>No tool called “${esc(q)}”… yet ♡</p></div>`;
+    const hiddenHits = words.length && !showHidden ? hidden.filter((id) => words.every((w) => TOOL_BY_ID[id].words.includes(w))).length : 0;
+    const more = hiddenHits ? `<p class="muted small hidden-hint">${trn(hiddenHits, '{n} hidden tool matches too —', '{n} hidden tools match too —')} <button class="link" data-show-hidden>${tr('show them')}</button></p>` : '';
+    $('#cats').innerHTML = (parts.join('') || `<div class="empty-search"><span class="cat" data-cat="main" data-size="5"></span><p>${tr('No tool called “{q}”… yet ♡', { q: esc(q) })}</p></div>`) + more;
   };
 
   $('#q').addEventListener('input', (e) => { lastFilter.q = e.target.value; render(); });
@@ -136,6 +159,7 @@ function home() {
   $('#chips').addEventListener('click', (e) => {
     const b = e.target.closest('.chip');
     if (!b) return;
+    if (b.hasAttribute('data-show-hidden')) { lastFilter.showHidden = !lastFilter.showHidden; render(); return; }
     lastFilter.group = b.dataset.group;
     Prefs.set('filter', lastFilter.group === 'favorites' ? '' : lastFilter.group);
     render();
@@ -143,6 +167,9 @@ function home() {
   $('#cats').addEventListener('click', (e) => {
     const fav = e.target.closest('[data-fav]');
     if (fav) { toggleFavorite(fav.dataset.fav); render(); return; }
+    const hide = e.target.closest('[data-hide]');
+    if (hide) { toggleHidden(hide.dataset.hide); render(); return; }
+    if (e.target.closest('[data-show-hidden]')) { lastFilter.showHidden = true; render(); return; }
     const tog = e.target.closest('[data-collapse]');
     if (tog) {
       const id = tog.dataset.collapse;
@@ -160,16 +187,28 @@ function home() {
 Prefs.onChange((name) => {
   if (!onHome) return;
   if (name === 'view' || name === 'cols') applyLayout();
-  if (['subcats', 'groupOrder', 'hiddenGroups', 'favorites', 'collapsed'].includes(name)) home.render?.();
+  if (['subcats', 'groupOrder', 'hiddenGroups', 'favorites', 'collapsed', 'hiddenTools', 'searchHidden'].includes(name)) home.render?.();
 });
 
 $('#settingsBtn').addEventListener('click', openSettings);
+
+// ↪ Other tool: open the file this tool is working on (with its edits, if the tool can build them) elsewhere.
+Handoff.onChange(() => { $('#nextBtn').hidden = onHome || !Handoff.current.length; });
+$('#nextBtn').addEventListener('click', async () => {
+  const files = Handoff.live ? await withBusy('Getting your file ready…', Handoff.live) : Handoff.current;
+  if (files?.length) openToolPicker(files, { save: Handoff.live ? false : null });
+});
+
+// EN | БГ switch in the top bar: shows both languages, the current one highlighted.
+$('#langBtn').innerHTML = Object.keys(LANGS).map((l) => `<span class="${l === LANG ? 'on' : ''}" lang="${l}">${l === 'bg' ? 'БГ' : 'EN'}</span>`).join('');
+$('#langBtn').setAttribute('aria-label', tr('Switch language'));
+$('#langBtn').addEventListener('click', () => setLang(LANG === 'bg' ? 'en' : 'bg'));
 
 /* ---------- Routing ---------- */
 
 async function openTool(tool) {
   onHome = false;
-  document.title = `${tool.name} — Maria's PDF Tools`;
+  document.title = `${tool.name} — ${APP_NAME}`;
   $('#crumbs').textContent = `› ${tool.name}`;
   $('#homeLink').hidden = false;
   document.body.classList.toggle('fullscreen-tool', tool.module === 'crop');
@@ -179,9 +218,10 @@ async function openTool(tool) {
     if (location.hash.slice(2).split('?')[0] !== tool.id) return; // navigated away while loading
     app.replaceChildren();
     unmount = (await mod.mount(app, tool)) || null;
+    Handoff.take(); // a tool without a drop zone leaves them; don't let the next tool pick them up
   } catch (e) {
     console.error(e);
-    app.innerHTML = `<div class="tool"><div class="result"><span class="cat" data-cat="main" data-size="5"></span><h2>Oops, this tool tripped over its tail</h2><p class="muted">${esc(e.message)}</p><a class="btn" href="#/">Back to all tools</a></div></div>`;
+    app.innerHTML = `<div class="tool"><div class="result"><span class="cat" data-cat="main" data-size="5"></span><h2>${tr('Oops, this tool tripped over its tail')}</h2><p class="muted">${esc(trMsg(e.message))}</p><a class="btn" href="#/">${tr('Back to all tools')}</a></div></div>`;
   }
 }
 
@@ -193,6 +233,10 @@ async function route() {
   window.scrollTo(0, 0);
   const id = location.hash.replace(/^#\/?/, '').split('?')[0];
   const tool = TOOL_BY_ID[id];
+  // Files handed on are for the tool being opened now; the top bar button starts empty again.
+  const handed = Handoff.take();
+  Handoff.reset();
+  if (tool) Handoff.send(handed);
   if (!id || !tool) {
     if (id) toast('That tool does not exist ♡', 'error');
     home();

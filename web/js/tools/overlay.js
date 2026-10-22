@@ -8,17 +8,17 @@ export function mount(root, tool) {
   root.innerHTML = `<div class="tool">${toolHeader(tool)}
     <div class="cols">
       <div class="stack">
-        <div class="panel-box stack"><h3 style="margin:0;color:var(--accent)">1. Your document</h3><div id="base"></div></div>
-        <div class="panel-box stack"><h3 style="margin:0;color:var(--accent)">2. Overlay / letterhead PDF</h3><div id="over"></div></div>
-        <div class="panel-box stack"><h3 style="margin:0;color:var(--accent)">♡ Preview</h3><div class="sheet-wrap" id="prev"><p class="muted">Choose both PDFs ✿</p></div></div>
+        <div class="panel-box stack"><h3 style="margin:0;color:var(--accent)">${tr('1. Your document')}</h3><div id="base"></div></div>
+        <div class="panel-box stack"><h3 style="margin:0;color:var(--accent)">${tr('2. Overlay / letterhead PDF')}</h3><div id="over"></div></div>
+        <div class="panel-box stack"><h3 style="margin:0;color:var(--accent)">${tr('♡ Preview')}</h3><div class="sheet-wrap" id="prev"><p class="muted">${tr('Choose both PDFs ✿')}</p></div></div>
       </div>
-      <div class="panel-box stack sticky-side" id="opts"><h3 style="margin:0;color:var(--accent)">♡ Options</h3></div>
+      <div class="panel-box stack sticky-side" id="opts"><h3 style="margin:0;color:var(--accent)">${tr('♡ Options')}</h3></div>
     </div><div id="result"></div></div>`;
   const files = { base: null, over: null };
   const slot = (key, el) => {
     const set = (f) => {
       files[key] = f;
-      el.replaceChildren(h(`<div class="row between"><span>📄 ${esc(f.name)}</span><button class="btn">Change</button></div>`));
+      el.replaceChildren(h(`<div class="row between"><span>📄 ${esc(f.name)}</span><button class="btn">${tr('Change')}</button></div>`));
       el.querySelector('button').onclick = () => el.replaceChildren(dz);
       preview();
     };
@@ -34,7 +34,7 @@ export function mount(root, tool) {
     { name: 'opacity', label: 'Opacity', type: 'range', value: 100, min: 5, max: 100, unit: '%' },
     ...PAGES_FIELDS,
   ], () => preview());
-  const go = h('<button class="btn primary big wide">Overlay PDFs ♡</button>');
+  const go = h(`<button class="btn primary big wide">${tr('Overlay PDFs ♡')}</button>`);
   $('#opts', root).append(form.el, go);
 
   async function build(previewOnly) {
@@ -73,7 +73,7 @@ export function mount(root, tool) {
       c.style.width = '440px';
       c.style.maxWidth = '100%';
       if (my === seq) $('#prev', root).replaceChildren(c);
-    } catch (e) { $('#prev', root).innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+    } catch (e) { $('#prev', root).innerHTML = `<p class="muted">${esc(trMsg(e.message))}</p>`; }
   }
   go.onclick = async () => {
     if (!files.base || !files.over) { toast('Choose both PDFs first ♡', 'error'); return; }

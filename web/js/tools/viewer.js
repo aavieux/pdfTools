@@ -19,17 +19,17 @@ export function mount(root, tool) {
     const { bytes, doc } = res;
     const ui = h(`<div class="cols left">
         <div class="panel-box stack sticky-side" style="max-height:calc(100vh - 210px);overflow:auto">
-          <div class="row"><input type="search" id="q" placeholder="Search…" style="flex:1"><button class="btn icon" id="prev">↑</button><button class="btn icon" id="next">↓</button></div>
+          <div class="row"><input type="search" id="q" placeholder="${tr('Search…')}" style="flex:1"><button class="btn icon" id="prev" title="${tr('Previous')}">↑</button><button class="btn icon" id="next" title="${tr('Next')}">↓</button></div>
           <div class="muted small" id="hits"></div>
           <div id="results" class="stack" style="gap:4px"></div>
           <div id="outline"></div>
         </div>
         <div class="stack">
           <div class="panel-box row between">
-            <div class="row"><b>📄 ${esc(file.name)}</b><span class="muted small">${doc.numPages} pages</span></div>
+            <div class="row"><b>📄 ${esc(file.name)}</b><span class="muted small">${trn(doc.numPages, '{n} page', '{n} pages')}</span></div>
             <div class="row">
               <span id="zoom"></span>
-              <button class="btn" id="dl">⬇ Download PDF</button><button class="btn" id="other">Open another</button>
+              <button class="btn" id="dl">${tr('⬇ Download PDF')}</button><button class="btn" id="other">${tr('Open another')}</button>
             </div>
           </div>
           <div class="viewer-wrap" id="area"></div>
@@ -95,19 +95,19 @@ export function mount(root, tool) {
           }
         }
         $('#results', ui).append(...hits.slice(0, 200).map((hh, n) => {
-          const b = h(`<button class="btn ghost" style="justify-content:flex-start;white-space:normal;text-align:left;border-radius:10px"><span class="muted small">p${hh.page + 1}</span> ${esc(hh.snippet)}</button>`);
+          const b = h(`<button class="btn ghost" style="justify-content:flex-start;white-space:normal;text-align:left;border-radius:10px"><span class="muted small">${tr('p{n}', { n: hh.page + 1 })}</span> ${esc(hh.snippet)}</button>`);
           b.onclick = () => go(n);
           return b;
         }));
       }
-      $('#hits', ui).textContent = query.length >= 2 ? `${hits.length} result${hits.length === 1 ? '' : 's'}` : '';
+      $('#hits', ui).textContent = query.length >= 2 ? trn(hits.length, '{n} result', '{n} results') : '';
       view.pages.forEach(mark);
     };
     const go = (n) => {
       if (!hits.length) return;
       cur = (n + hits.length) % hits.length;
       view.pages[hits[cur].page].el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      $('#hits', ui).textContent = `${cur + 1} of ${hits.length}`;
+      $('#hits', ui).textContent = tr('{k} of {n}', { k: cur + 1, n: hits.length });
     };
     let t = 0;
     $('#q', ui).oninput = () => { clearTimeout(t); t = setTimeout(search, 250); };
@@ -118,7 +118,7 @@ export function mount(root, tool) {
     const outline = await doc.getOutline();
     if (outline?.length) {
       const box = $('#outline', ui);
-      box.appendChild(h('<h3 style="margin:8px 0 4px;color:var(--accent)">🔖 Bookmarks</h3>'));
+      box.appendChild(h(`<h3 style="margin:8px 0 4px;color:var(--accent)">${tr('🔖 Bookmarks')}</h3>`));
       const add = (items, depth) => {
         for (const it of items) {
           const b = h(`<button class="btn ghost" style="justify-content:flex-start;padding-left:${8 + depth * 14}px;border-radius:10px;white-space:normal;text-align:left">${esc(it.title)}</button>`);

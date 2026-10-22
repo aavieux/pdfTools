@@ -238,6 +238,17 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, .btn:focus-vi
 .fav.on { color: #e0a100; opacity: 1; }
 .fav:focus-visible { outline: 2px solid var(--accent); }
 .empty-search { text-align: center; color: var(--muted); padding: 40px 0; }
+/* Hide / show a tool: a small round button on the card's top-left corner, shown on hover. */
+.hide-tool { position: absolute; top: -7px; left: -7px; z-index: 1; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; display: grid; place-items: center; padding: 0; opacity: 0; box-shadow: var(--shadow); transition: opacity 0.15s, transform 0.15s, color 0.15s; }
+.card-wrap:hover .hide-tool, .hide-tool:focus-visible { opacity: 1; }
+.hide-tool:hover { transform: scale(1.15); color: var(--accent); border-color: var(--accent); }
+.card-wrap.is-hidden .card { opacity: 0.5; border-style: dashed; }
+.card-wrap.is-hidden .hide-tool { opacity: 1; color: var(--accent); border-color: var(--accent); }
+.hidden-chip { margin-left: auto; }
+/* The crop tool has its own “↪ Other tool” button next to Save. */
+body.fullscreen-tool #nextBtn { display: none; }
+.hidden-hint { text-align: center; }
+@media (hover: none) { .hide-tool { opacity: 0.7; } }
 
 /* ---------- Tool page ---------- */
 .tool { max-width: 1100px; width: 100%; margin: 0 auto; padding: 18px 16px 80px; }
@@ -321,6 +332,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, .btn:focus-vi
 }
 .result h2 { color: var(--accent); margin: 10px 0 6px; }
 .result .row { justify-content: center; margin-top: 12px; }
+.result .onward { margin-top: 14px; padding-top: 12px; border-top: 1.5px dashed var(--border); }
 .result-list { list-style: none; padding: 0; margin: 14px auto 0; max-width: 520px; text-align: left; display: flex; flex-direction: column; gap: 6px; }
 .result-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 12px; background: var(--surface-2); }
 .result-list li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -365,16 +377,36 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, .btn:focus-vi
 .pg .pg-img { width: 100%; aspect-ratio: 0.75; display: grid; place-items: center; }
 .pg canvas { max-width: 100%; max-height: 100%; background: #fff; box-shadow: var(--shadow); transition: transform 0.25s; }
 .pg .pg-num { font-size: 12px; color: var(--muted); }
-.pg .pg-tools { position: absolute; top: 4px; right: 4px; display: flex; gap: 3px; opacity: 0; transition: opacity 0.15s; }
+/* The thumbnail canvas is transformed (rotation), which paints it above un-stacked siblings: lift the buttons over it. */
+.pg .pg-tools { position: absolute; top: 4px; right: 4px; z-index: 2; display: flex; gap: 3px; opacity: 0; transition: opacity 0.15s; }
 .pg:hover .pg-tools, .pg:focus-within .pg-tools { opacity: 1; }
 .pg .pg-tools button { width: 26px; height: 26px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-text); cursor: pointer; font-size: 13px; }
 .pg.sel { border-color: var(--accent); background: var(--accent-soft); }
-.pg.sel::after { content: "✓"; position: absolute; top: 4px; left: 8px; color: var(--accent); font-weight: 700; }
+.pg.sel::after { content: "✓"; position: absolute; top: 4px; left: 8px; z-index: 2; color: var(--accent); font-weight: 700; }
 .pg.removed { opacity: 0.35; }
 .pg.removed canvas { filter: grayscale(1); }
 .pg.selectable { cursor: pointer; }
 .pg.sortable { cursor: grab; }
 .pg .badge-blank { font-size: 12px; color: var(--muted); }
+
+/* ---------- Make it look scanned ---------- */
+.scan-pages { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.scan-pages .pg-num { text-align: center; }
+.scan-pages .pg { cursor: pointer; }
+.scan-opts .radio-tiles { flex-wrap: wrap; }
+.settings.scan-editor { width: min(1100px, calc(100vw - 32px)); overflow: auto; }
+.scan-edit { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.scan-edit p { margin: 0; }
+.corner-stage { position: relative; display: inline-block; line-height: 0; align-self: center; touch-action: none; user-select: none; }
+.corner-stage .corner-pic { display: block; max-width: 100%; max-height: 62vh; width: auto; height: auto; box-shadow: var(--shadow); }
+.corner-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.corner-stage polygon { fill: color-mix(in srgb, var(--accent) 14%, transparent); stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; }
+.corner { position: absolute; width: 24px; height: 24px; margin: -12px 0 0 -12px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45); cursor: grab; touch-action: none; }
+.corner:active { cursor: grabbing; transform: scale(1.15); }
+.corner:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.scan-result { display: grid; place-items: center; background: var(--surface-2); border-radius: 12px; padding: 10px; min-height: 160px; }
+.scan-result canvas { max-width: 100%; max-height: 52vh; box-shadow: var(--shadow); }
+@media (max-width: 760px) { .scan-edit { grid-template-columns: 1fr; } }
 
 /* ---------- Assemble ---------- */
 .docs-cols { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(260px, 1fr); gap: 14px; overflow-x: auto; padding-bottom: 8px; }
@@ -517,7 +549,7 @@ mark { background: var(--accent-soft); color: inherit; border-radius: 3px; paddi
 .diff-del { background: rgba(214, 51, 108, 0.25); text-decoration: line-through; }
 .diff-ins { background: rgba(47, 158, 110, 0.28); }
 
-/* ---------- Document designers (card, collage, invoice) ---------- */
+/* ---------- Document designers (card, collage) ---------- */
 .sheet-wrap { background: var(--viewer); border-radius: 18px; padding: 20px; overflow: auto; display: flex; justify-content: center; }
 .sheet { background: #fff; color: #222; box-shadow: 0 6px 24px color-mix(in srgb, var(--accent) 25%, transparent); position: relative; flex: none; overflow: hidden; transform-origin: top center; }
 .sheet [contenteditable] { outline: none; }
@@ -689,6 +721,25 @@ body.fullscreen-tool .pals { display: none; }
 .buddy-pick.colors .buddy { min-width: 58px; padding: 6px; }
 .icon-text { gap: 4px; }
 
+/* Customize → which tools are shown */
+.tool-toggles summary { cursor: pointer; color: var(--accent); font-weight: 500; }
+.tool-toggles[open] summary { margin-bottom: 8px; }
+.tool-toggle-group { --c: var(--accent); margin-bottom: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px 10px; }
+.tool-toggle-group h4 { grid-column: 1 / -1; margin: 6px 0 2px; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.tool-toggle-group .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+.tool-toggle-group .field.check { font-size: 14px; }
+
+/* ↪ Open in another tool */
+.settings.picker { width: min(640px, calc(100vw - 32px)); }
+.picker .save-first { padding: 8px 12px; border-radius: 12px; background: var(--surface-2); }
+.picker-list { display: flex; flex-direction: column; gap: 12px; max-height: 55vh; overflow: auto; padding-right: 4px; }
+.picker-list h3 { margin: 0 0 6px; font-size: 14px; }
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; }
+.pick-tool { --c: var(--accent); font: inherit; font-size: 14px; color: var(--text); text-align: left; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+.pick-tool:hover, .pick-tool:focus-visible { border-color: var(--c); transform: translateY(-1px); }
+.pick-tool .card-ico { width: 30px; height: 30px; font-size: 16px; border-radius: 9px; }
+.pick-tool.is-hidden { opacity: 0.6; border-style: dashed; }
+
 /* ---------- Zoomable previews ---------- */
 .zoombar { display: inline-flex; align-items: center; gap: 4px; }
 .zoombar output { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); }
@@ -750,3 +801,8 @@ body.fullscreen-tool .pals { display: none; }
 .sheet .sel { outline: 2px dashed var(--accent); outline-offset: 2px; }
 .sheet .slot.sel { outline-style: solid; }
 .sheet .dtext-in[contenteditable="true"] { outline: none; cursor: text; background: rgba(255, 255, 255, 0.6); }
+
+/* ---------- Language switch (EN | БГ) ---------- */
+.lang-toggle { padding: 4px 6px; gap: 2px; font-size: 13px; font-weight: 600; }
+.lang-toggle span { padding: 2px 7px; border-radius: 999px; color: var(--muted); }
+.lang-toggle span.on { background: var(--accent); color: var(--accent-text); }

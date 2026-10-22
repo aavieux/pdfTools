@@ -19,7 +19,7 @@ export function compressFields(unit) {
 export function compressValues(v) {
   const { how, level, target, unit, ...rest } = v;
   if (how !== 'size') return { ...rest, level };
-  if (!(target > 0)) throw new Error('Please type the size the file should have ♡');
+  if (!(target > 0)) throw new Error(tr('Please type the size the file should have ♡'));
   return { ...rest, target, unit };
 }
 
@@ -29,8 +29,15 @@ export function compressSummary(outputs) {
   const after = outputs.reduce((s, o) => s + o.data.size, 0);
   const pct = Math.max(0, Math.round((1 - after / before) * 100));
   const missed = outputs.filter((o) => o.data.headers?.get('X-Note') === 'target-not-reached');
-  return `<p>${fmtBytes(before)} → <b>${fmtBytes(after)}</b> · ${pct ? `${pct}% smaller 🎉` : 'already as small as it gets ♡'}</p>${
-    missed.length ? `<p class="warn" style="max-width:520px;margin:8px auto;text-align:left">I couldn’t get ${missed.length === outputs.length ? (missed.length === 1 ? 'this file' : 'these files') : missed.map((o) => esc(o.name)).join(', ')} all the way down to that size — ${missed.length === 1 ? 'this is' : 'these are'} the smallest I could make without ruining ${missed.length === 1 ? 'it' : 'them'}. Text and drawings can’t be squeezed much; pictures can.</p>` : ''}`;
+  // Name the files that missed the size, unless it's all of them.
+  const names = missed.length === outputs.length ? '' : missed.map((o) => esc(o.name)).join(', ');
+  const why = missed.length === 1
+    ? (names ? tr('I couldn’t get {names} all the way down to that size — this is the smallest I could make without ruining it.', { names })
+      : tr('I couldn’t get this file all the way down to that size — this is the smallest I could make without ruining it.'))
+    : (names ? tr('I couldn’t get {names} all the way down to that size — these are the smallest I could make without ruining them.', { names })
+      : tr('I couldn’t get these files all the way down to that size — these are the smallest I could make without ruining them.'));
+  return `<p>${fmtBytes(before)} → <b>${fmtBytes(after)}</b> · ${pct ? tr('{pct}% smaller 🎉', { pct }) : tr('already as small as it gets ♡')}</p>${
+    missed.length ? `<p class="warn" style="max-width:520px;margin:8px auto;text-align:left">${why} ${tr('Text and drawings can’t be squeezed much; pictures can.')}</p>` : ''}`;
 }
 
 const SPECS = {
@@ -95,8 +102,8 @@ const SPECS = {
       { name: 'forms', label: 'Allow filling forms', type: 'checkbox', value: true },
     ],
     prepare(v) {
-      if (!v.user_password && !v.owner_password) throw new Error('Please enter a password ♡');
-      if (v.user_password !== v.user_password2) throw new Error('The two passwords are not the same');
+      if (!v.user_password && !v.owner_password) throw new Error(tr('Please enter a password ♡'));
+      if (v.user_password !== v.user_password2) throw new Error(tr('The two passwords are not the same'));
       return {
         user_password: v.user_password,
         owner_password: v.owner_password,

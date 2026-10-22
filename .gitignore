@@ -55,3 +55,6 @@ tmp/
 # Local test files
 *.pdf
 !web/**/*.pdf
+
+# Local helper scripts (some contain the NAS address)
+scripts/

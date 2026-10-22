@@ -63,7 +63,7 @@ export function mount(root, tool) {
       <div class="panel-box stack sticky-side">
         <div class="qr-out" id="out"></div>
         <div class="row"><button class="btn primary" data-f="png">⬇ PNG</button><button class="btn" data-f="svg">⬇ SVG</button><button class="btn" data-f="pdf">⬇ PDF</button></div>
-        <p class="note">Always test-scan your QR code with your phone before printing ✿</p>
+        <p class="note">${tr('Always test-scan your QR code with your phone before printing ✿')}</p>
       </div></div></div>`;
   let logo = null;
   const content = optionsForm([
@@ -73,7 +73,7 @@ export function mount(root, tool) {
     { name: 'pass', label: 'Password', type: 'text', show: (v) => v.kind === 'wifi' && v.enc !== 'nopass' },
     { name: 'enc', label: 'Security', type: 'select', value: 'WPA', options: [['WPA', 'WPA/WPA2/WPA3'], ['WEP', 'WEP'], ['nopass', 'None']], show: (v) => v.kind === 'wifi' },
     { name: 'hidden', label: 'Hidden network', type: 'checkbox', show: (v) => v.kind === 'wifi' },
-    { name: 'first', label: 'First name', type: 'text', value: 'Maria', show: (v) => v.kind === 'contact' },
+    { name: 'first', label: 'First name', type: 'text', value: tr('Maria'), show: (v) => v.kind === 'contact' },
     { name: 'last', label: 'Last name', type: 'text', show: (v) => v.kind === 'contact' },
     { name: 'org', label: 'Company', type: 'text', show: (v) => v.kind === 'contact' },
     { name: 'web', label: 'Website', type: 'text', show: (v) => v.kind === 'contact' },
@@ -99,8 +99,8 @@ export function mount(root, tool) {
     { name: 'ecc', label: 'Error correction', type: 'select', value: 'M', options: [['L', 'Low (7%)'], ['M', 'Medium (15%)'], ['Q', 'Quartile (25%)'], ['H', 'High (30%)']] },
     { name: 'px', label: 'Size (pixels)', type: 'number', value: 1000, min: 100, max: 4000 },
   ], () => draw());
-  $('#content', root).append(h('<h3 style="margin:0;color:var(--accent)">♡ Content</h3>'), content.el);
-  const logoBtn = h('<div class="row"><button class="btn">🖼️ Add a logo…</button><button class="btn" hidden>Remove logo</button></div>');
+  $('#content', root).append(h(`<h3 style="margin:0;color:var(--accent)">${tr('♡ Content')}</h3>`), content.el);
+  const logoBtn = h(`<div class="row"><button class="btn">${tr('🖼️ Add a logo…')}</button><button class="btn" hidden>${tr('Remove logo')}</button></div>`);
   logoBtn.children[0].onclick = async () => {
     const [f] = await pickFiles({ accept: 'image/*' });
     if (!f) return;
@@ -114,7 +114,7 @@ export function mount(root, tool) {
     draw();
   };
   logoBtn.children[1].onclick = () => { logo = null; logoBtn.children[1].hidden = true; draw(); };
-  $('#style', root).append(h('<h3 style="margin:0;color:var(--accent)">🎨 Style</h3>'), style.el, logoBtn);
+  $('#style', root).append(h(`<h3 style="margin:0;color:var(--accent)">${tr('🎨 Style')}</h3>`), style.el, logoBtn);
 
   let svg = '';
   function draw() {
@@ -124,7 +124,7 @@ export function mount(root, tool) {
       $('#out svg', root).style.width = '280px';
       $('#out svg', root).style.height = '280px';
     } catch (e) {
-      $('#out', root).innerHTML = `<p class="muted">${esc(e.message.includes('overflow') ? 'Too much text for one QR code 🙀' : e.message)}</p>`;
+      $('#out', root).innerHTML = `<p class="muted">${esc(e.message.includes('overflow') ? tr('Too much text for one QR code 🙀') : trMsg(e.message))}</p>`;
     }
   }
   root.querySelector('.sticky-side .row').onclick = async (e) => {

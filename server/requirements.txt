@@ -8,8 +8,6 @@ ocrmypdf
 pdf2docx
 pyhanko
 pyhanko-certvalidator
-factur-x
-drafthorse
 pillow
 pillow-heif
 psd-tools[composite]

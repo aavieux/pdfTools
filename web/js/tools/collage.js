@@ -17,16 +17,16 @@ const THEMES = [
   { id: 'linen', group: 'Minimal', name: 'Linen', bg: '#eee7db', gap: 5, margin: 12, radius: 1.5 },
   { id: 'noir', group: 'Minimal', name: 'Noir', bg: '#111111', gap: 2, margin: 6 },
   { id: 'pink', group: 'Cute', name: 'Pink dream', bg: '#fff5f9', gap: 4, margin: 8, radius: 3, frame: 2.5, frameColor: '#ffffff', shadow: true,
-    title: { text: 'Our memories ♡', font: 'Pacifico', color: '#ec4d8f' } },
+    title: { text: tr('Our memories ♡'), font: 'Pacifico', color: '#ec4d8f' } },
   { id: 'polaroid', group: 'Cute', name: 'Polaroids', bg: '#efe6d8', gap: 4, margin: 8, frame: 3, frameBottom: 11, frameColor: '#ffffff', shadow: true, style: 'scatter',
-    title: { text: 'summer days ☀', font: 'Caveat', color: '#5b4636' } },
+    title: { text: tr('summer days ☀'), font: 'Caveat', color: '#5b4636' } },
   { id: 'scrapbook', group: 'Cute', name: 'Scrapbook', bg: KRAFT, gap: 9, margin: 11, frame: 2, frameColor: '#fffdf6', shadow: true, jitter: 4, tape: true,
-    title: { text: 'little moments', font: 'Caveat', color: '#4a3424' } },
+    title: { text: tr('little moments'), font: 'Caveat', color: '#4a3424' } },
   { id: 'pastel', group: 'Cute', name: 'Pastel dots', bg: 'radial-gradient(#f7cfe0 1.2px, #ffffff 1.3px) 0 0/14px 14px', gap: 5, margin: 9, radius: 4 },
   { id: 'love', group: 'Cute', name: 'Love', bg: '#ffe4ee', gap: 5, margin: 12, radius: 3, frame: 2, frameColor: '#ffffff', shadow: true,
-    title: { text: 'with love ♡', font: 'Pacifico', color: '#d6336c' }, stickers: ['heart', '💖', 'heart', '🌸'] },
+    title: { text: tr('with love ♡'), font: 'Pacifico', color: '#d6336c' }, stickers: ['heart', '💖', 'heart', '🌸'] },
   { id: 'night', group: 'Cute', name: 'Starry night', bg: 'radial-gradient(#ffffff 0.7px, transparent 1px) 0 0/19px 19px, radial-gradient(#fff6 0.6px, transparent 1px) 9px 11px/23px 23px, #1f2340',
-    gap: 4, margin: 9, radius: 2, frame: 1.5, frameColor: '#e9e4ff', shadow: true, title: { text: '✨ good times ✨', font: 'Pacifico', color: '#ffe8a3' } },
+    gap: 4, margin: 9, radius: 2, frame: 1.5, frameColor: '#e9e4ff', shadow: true, title: { text: tr('✨ good times ✨'), font: 'Pacifico', color: '#ffe8a3' } },
 ];
 const THEME_BY_ID = Object.fromEntries(THEMES.map((t) => [t.id, t]));
 const BGS = ['#ffffff', '#f6f4f0', '#111111', '#fff5f9', '#ffe4ee', '#fdf2c4', '#e7f6ee', '#e8eefc', '#f1e8ff', '#2e1a25'];
@@ -126,27 +126,27 @@ function layoutPreview(key, n, aspect, seed) {
 export function mount(root, tool) {
   root.innerHTML = `<div class="tool wide">${toolHeader(tool)}
     <div class="cols" style="grid-template-columns:minmax(0,1fr) 340px">
-      <div class="stack" style="gap:8px"><div class="row between"><span class="muted small">Pinch or hold Ctrl/⌘ and scroll to zoom ✿</span><span id="zoomBar"></span></div><div class="sheet-wrap design-area" id="wrap"></div></div>
+      <div class="stack" style="gap:8px"><div class="row between"><span class="muted small">${tr('Pinch or hold Ctrl/⌘ and scroll to zoom ✿')}</span><span id="zoomBar"></span></div><div class="sheet-wrap design-area" id="wrap"></div></div>
       <div class="panel-box stack sticky-side side collage-side" id="side" style="max-height:calc(100vh - 160px);overflow:auto">
-        <h3>📷 Photos</h3>
+        <h3>${tr('📷 Photos')}</h3>
         <div class="row between">
-          <div class="stepper"><button class="btn icon" id="less" title="One photo less">−</button><output id="count"></output><button class="btn icon" id="more" title="One photo more">+</button></div>
-          <span class="muted small">photos on the page</span>
+          <div class="stepper"><button class="btn icon" id="less" title="${tr('One photo less')}">−</button><output id="count"></output><button class="btn icon" id="more" title="${tr('One photo more')}">+</button></div>
+          <span class="muted small">${tr('photos on the page')}</span>
         </div>
-        <button class="btn" id="fill">📷 Add photos…</button>
-        <p class="muted small" style="margin:0">Click a spot on the page to change its photo. Adding more photos than spots adds spots.</p>
-        <h3>🎨 Theme</h3><div id="themes" class="stack" style="gap:6px"></div>
-        <div class="row between"><h3>🧩 Layout</h3><button class="btn" id="shuffle" title="Mix the layout up">🎲 Shuffle</button></div>
+        <button class="btn" id="fill">${tr('📷 Add photos…')}</button>
+        <p class="muted small" style="margin:0">${tr('Click a spot on the page to change its photo. Adding more photos than spots adds spots.')}</p>
+        <h3>${tr('🎨 Theme')}</h3><div id="themes" class="stack" style="gap:6px"></div>
+        <div class="row between"><h3>${tr('🧩 Layout')}</h3><button class="btn" id="shuffle" title="${tr('Mix the layout up')}">${tr('🎲 Shuffle')}</button></div>
         <div class="layout-picker" id="layouts"></div>
-        <div class="field-row"><label class="field"><span>Page</span><select id="size">${Object.keys(SIZES).map((k) => `<option>${k}</option>`).join('')}</select></label>
-          <label class="field"><span>Gap <output id="gapOut"></output></span><input type="range" id="gap" min="0" max="16" step="0.5"></label></div>
-        <label class="field check"><input type="checkbox" id="titleOn"><span>Show a title</span></label>
-        <h3>🖌️ Background</h3><div class="row" id="bgs"></div>
-        <h3>✨ Add</h3>
-        <button class="btn" id="text">🔤 Add text</button>
+        <div class="field-row"><label class="field"><span>${tr('Page')}</span><select id="size">${Object.keys(SIZES).map((k) => `<option value="${k}">${tr(k)}</option>`).join('')}</select></label>
+          <label class="field"><span>${tr('Gap')} <output id="gapOut"></output></span><input type="range" id="gap" min="0" max="16" step="0.5"></label></div>
+        <label class="field check"><input type="checkbox" id="titleOn"><span>${tr('Show a title')}</span></label>
+        <h3>${tr('🖌️ Background')}</h3><div class="row" id="bgs"></div>
+        <h3>${tr('✨ Add')}</h3>
+        <button class="btn" id="text">${tr('🔤 Add text')}</button>
         <div id="stickers"></div>
         <div id="selbox" class="stack"></div>
-        <button class="btn primary big wide" id="save">Save as PDF ♡</button>
+        <button class="btn primary big wide" id="save">${tr('Save as PDF ♡')}</button>
       </div>
     </div><div id="result"></div></div>`;
 
@@ -228,17 +228,17 @@ export function mount(root, tool) {
     $('#less', root).disabled = opts.count <= 1;
     $('#more', root).disabled = opts.count >= MAX_PHOTOS;
     $('#gap', root).value = opts.gap;
-    $('#gapOut', root).textContent = `${opts.gap} mm`;
+    $('#gapOut', root).textContent = `${fmtNum(opts.gap)} ${tr('mm')}`;
     $('#titleOn', root).checked = opts.title;
     $('#titleOn', root).disabled = !theme().title;
     const u = usable();
     const aspect = u.w / u.h;
     $('#layouts', root).innerHTML = Object.entries(LAYOUTS).filter(([, l]) => !l.max || opts.count <= l.max).map(([k, l]) =>
-      `<button class="${k === opts.layout ? 'on' : ''}" data-layout="${k}" title="${esc(l.name)}">${layoutPreview(k, opts.count, aspect, opts.seed)}<span>${esc(l.name)}</span></button>`).join('');
+      `<button class="${k === opts.layout ? 'on' : ''}" data-layout="${k}" title="${esc(tr(l.name))}">${layoutPreview(k, opts.count, aspect, opts.seed)}<span>${esc(tr(l.name))}</span></button>`).join('');
     const byGroup = (g) => THEMES.filter((t) => t.group === g).map((t) =>
-      `<button class="${t.id === opts.theme ? 'on' : ''}" data-theme="${t.id}"><span class="theme-sample" style="background:${t.bg}"><i style="border-radius:${Math.min(t.radius || 0, 3)}px;${t.frame ? `outline:${Math.max(1, Math.min(t.frame, 3))}px solid ${t.frameColor};` : ''}"></i></span>${esc(t.name)}</button>`).join('');
-    $('#themes', root).innerHTML = `<span class="muted small">Minimal</span><div class="theme-picker">${byGroup('Minimal')}</div>
-      <span class="muted small">Cute</span><div class="theme-picker">${byGroup('Cute')}</div>`;
+      `<button class="${t.id === opts.theme ? 'on' : ''}" data-theme="${t.id}"><span class="theme-sample" style="background:${t.bg}"><i style="border-radius:${Math.min(t.radius || 0, 3)}px;${t.frame ? `outline:${Math.max(1, Math.min(t.frame, 3))}px solid ${t.frameColor};` : ''}"></i></span>${esc(tr(t.name))}</button>`).join('');
+    $('#themes', root).innerHTML = `<span class="muted small">${tr('Minimal')}</span><div class="theme-picker">${byGroup('Minimal')}</div>
+      <span class="muted small">${tr('Cute')}</span><div class="theme-picker">${byGroup('Cute')}</div>`;
   };
 
   const setCount = (n) => { opts.count = Math.max(1, Math.min(MAX_PHOTOS, n)); applyLayout(); };
@@ -272,11 +272,11 @@ export function mount(root, tool) {
   $('#size', root).onchange = () => { syncTitle(); applyLayout(); };
   $('#titleOn', root).onchange = (e) => { syncTitle(); opts.title = e.target.checked; applyLayout(); };
   $('#bgs', root).append(...BGS.map((bg) => {
-    const b = h(`<button class="btn icon" style="width:30px;height:30px;background:${bg};border:2px solid var(--border)" title="Background"></button>`);
+    const b = h(`<button class="btn icon" style="width:30px;height:30px;background:${bg};border:2px solid var(--border)" title="${tr('Background')}"></button>`);
     b.onclick = () => { opts.bg = bg; state.sheets[0].bg = bg; designer.render(); };
     return b;
   }));
-  $('#text', root).onclick = () => designer.addText('Our memories ♡');
+  $('#text', root).onclick = () => designer.addText(tr('Our memories ♡'));
   $('#stickers', root).appendChild(stickerPicker((s) => designer.addSticker(s)));
   $('#fill', root).onclick = async () => {
     const files = await pickFiles({ accept: 'image/*', multiple: true });

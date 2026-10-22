@@ -32,6 +32,13 @@ const MODES = {
     tip: 'Drag black boxes over anything secret, or search for words. Redaction really deletes it — not just covers it ⬛' },
 };
 
+// Heading shown above the side panel for the selected object.
+const SELECTED = {
+  text: 'Selected text', image: 'Selected image', rect: 'Selected rectangle', ellipse: 'Selected ellipse', line: 'Selected line',
+  arrow: 'Selected arrow', pen: 'Selected drawing', highlight: 'Selected highlight', whiteout: 'Selected white-out', note: 'Selected note',
+  field: 'Selected field', redact: 'Selected redaction box',
+};
+
 const FIELD_TYPES = [['text', '𝐓 Text'], ['multiline', '¶ Long text'], ['checkbox', '☑ Checkbox'], ['radio', '◉ Radio button'], ['dropdown', '▾ Dropdown'], ['list', '☰ List'], ['date', '📅 Date']];
 const COLORS = ['#222222', '#ec4d8f', '#7c3aed', '#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#ffffff'];
 const SIG_KEY = 'mariapdf.signatures';
@@ -53,13 +60,13 @@ export function mount(root, tool) {
     const ui = h(`<div class="stack">
       <div class="panel-box row between">
         <div class="row"><b>📄 ${esc(name)}</b>
-          <button class="btn icon" id="undo" title="Undo (Ctrl+Z)">↶</button><button class="btn icon" id="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+          <button class="btn icon" id="undo" title="${tr('Undo (Ctrl+Z)')}">↶</button><button class="btn icon" id="redo" title="${tr('Redo (Ctrl+Shift+Z)')}">↷</button>
           <span id="zoom"></span>
         </div>
-        <div class="row"><button class="btn" id="other">Open another</button><button class="btn primary big" id="save">${mode.server ? 'Redact & save' : 'Save PDF'} ♡</button></div>
+        <div class="row"><button class="btn" id="other">${tr('Open another')}</button><button class="btn primary big" id="save">${tr(mode.server ? 'Redact & save' : 'Save PDF')} ♡</button></div>
       </div>
       <div class="editor">
-        <div class="toolbox" id="toolbox">${mode.tools.map((t) => `<button data-tool="${t}" title="${esc(TOOLS[t][1])}">${TOOLS[t][0]}</button>`).join('')}</div>
+        <div class="toolbox" id="toolbox">${mode.tools.map((t) => `<button data-tool="${t}" title="${esc(tr(TOOLS[t][1]))}">${TOOLS[t][0]}</button>`).join('')}</div>
         <div class="canvas-area" id="area"></div>
         <div class="side" id="side"></div>
       </div>
@@ -140,8 +147,8 @@ export function mount(root, tool) {
       const set = (props) => { if (isObj) editor.update(target.id, props); else Object.assign(style, props); };
       const wrap = h('<div class="stack"></div>');
       const colorRow = (label, key, allowNone) => {
-        const row = h(`<label class="field"><span>${label}</span><div class="row">${COLORS.map((c) => `<button class="btn icon" data-c="${c}" style="width:26px;height:26px;background:${c};border:2px solid ${src[key] === c ? 'var(--accent)' : 'var(--border)'}"></button>`).join('')}
-          ${allowNone ? '<button class="btn" data-c="" style="padding:2px 8px;font-size:12px">none</button>' : ''}<input type="color" value="${src[key] || '#ffffff'}"></div></label>`);
+        const row = h(`<label class="field"><span>${tr(label)}</span><div class="row">${COLORS.map((c) => `<button class="btn icon" data-c="${c}" style="width:26px;height:26px;background:${c};border:2px solid ${src[key] === c ? 'var(--accent)' : 'var(--border)'}"></button>`).join('')}
+          ${allowNone ? `<button class="btn" data-c="" style="padding:2px 8px;font-size:12px">${tr('none')}</button>` : ''}<input type="color" value="${src[key] || '#ffffff'}"></div></label>`);
         row.onclick = (e) => { const b = e.target.closest('[data-c]'); if (b) { e.preventDefault(); set({ [key]: b.dataset.c }); renderSide(isObj ? editor.get(target.id) : null); } };
         row.querySelector('input').onchange = (e) => { set({ [key]: e.target.value }); };
         return row;
@@ -150,23 +157,23 @@ export function mount(root, tool) {
       if (t === 'highlight') wrap.appendChild(colorRow('Highlighter color', isObj ? 'color' : 'highlight'));
       if (['rect', 'ellipse'].includes(t)) wrap.appendChild(colorRow('Fill', 'fill', true));
       if (['rect', 'ellipse', 'line', 'arrow', 'pen'].includes(t)) {
-        const r = h(`<label class="field"><span>Line width</span><div class="row"><input type="range" min="0.5" max="20" step="0.5" value="${src.width ?? 2}" style="flex:1"><output>${src.width ?? 2}</output></div></label>`);
+        const r = h(`<label class="field"><span>${tr('Line width')}</span><div class="row"><input type="range" min="0.5" max="20" step="0.5" value="${src.width ?? 2}" style="flex:1"><output>${src.width ?? 2}</output></div></label>`);
         r.querySelector('input').oninput = (e) => { r.querySelector('output').textContent = e.target.value; };
         r.querySelector('input').onchange = (e) => set({ width: parseFloat(e.target.value) });
         wrap.appendChild(r);
       }
       if (t === 'text') {
-        const r = h(`<div class="field-row"><label class="field"><span>Size</span><input type="number" min="4" max="200" value="${src.size}"></label>
-          <label class="field"><span>Align</span><select>${['left', 'center', 'right'].map((a) => `<option${src.align === a ? ' selected' : ''}>${a}</option>`).join('')}</select></label></div>`);
+        const r = h(`<div class="field-row"><label class="field"><span>${tr('Size')}</span><input type="number" min="4" max="200" value="${src.size}"></label>
+          <label class="field"><span>${tr('Align')}</span><select>${[['left', 'Left'], ['center', 'Centre'], ['right', 'Right']].map(([a, l]) => `<option value="${a}"${src.align === a ? ' selected' : ''}>${tr(l)}</option>`).join('')}</select></label></div>`);
         r.querySelector('input').onchange = (e) => set({ size: parseFloat(e.target.value) || 12 });
         r.querySelector('select').onchange = (e) => set({ align: e.target.value });
         wrap.appendChild(r);
-        const b = h(`<label class="field check"><input type="checkbox"${src.bold ? ' checked' : ''}><span>Bold</span></label>`);
+        const b = h(`<label class="field check"><input type="checkbox"${src.bold ? ' checked' : ''}><span>${tr('Bold')}</span></label>`);
         b.querySelector('input').onchange = (e) => set({ bold: e.target.checked });
         wrap.appendChild(b);
       }
       if (['text', 'image', 'rect', 'ellipse', 'line', 'arrow', 'pen'].includes(t)) {
-        const r = h(`<label class="field"><span>Opacity</span><input type="range" min="10" max="100" value="${Math.round((src.opacity ?? 1) * 100)}"></label>`);
+        const r = h(`<label class="field"><span>${tr('Opacity')}</span><input type="range" min="10" max="100" value="${Math.round((src.opacity ?? 1) * 100)}"></label>`);
         r.querySelector('input').onchange = (e) => set({ opacity: e.target.value / 100 });
         wrap.appendChild(r);
       }
@@ -175,15 +182,15 @@ export function mount(root, tool) {
 
     function fieldEditor(o, focus) {
       const wrap = h(`<div class="stack">
-          <label class="field"><span>Field name</span><input type="text" data-k="name" value="${esc(o.name)}"></label>
-          <label class="field"><span>Type</span><select data-k="fieldType">${FIELD_TYPES.map(([k, l]) => `<option value="${k}"${o.fieldType === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
-          ${o.fieldType === 'dropdown' || o.fieldType === 'list' ? `<label class="field"><span>Choices (one per line)</span><textarea data-k="options" rows="4">${esc(o.options.join('\n'))}</textarea></label>` : ''}
-          ${o.fieldType === 'radio' ? `<label class="field"><span>Group (radio buttons with the same group belong together)</span><input type="text" data-k="group" value="${esc(o.group || '')}"></label>
-            <label class="field"><span>Value of this button</span><input type="text" data-k="value" value="${esc(o.value || '')}"></label>` : ''}
-          ${o.fieldType === 'text' || o.fieldType === 'multiline' || o.fieldType === 'date' ? `<label class="field"><span>Default text</span><input type="text" data-k="value" value="${esc(o.value || '')}"></label>
-            <label class="field"><span>Font size (0 = auto)</span><input type="number" data-k="fontSize" min="0" max="72" value="${o.fontSize || 0}"></label>` : ''}
-          ${o.fieldType === 'checkbox' ? `<label class="field check"><input type="checkbox" data-k="checked"${o.value === 'on' ? ' checked' : ''}><span>Checked by default</span></label>` : ''}
-          <label class="field check"><input type="checkbox" data-k="required"${o.required ? ' checked' : ''}><span>Required</span></label>
+          <label class="field"><span>${tr('Field name')}</span><input type="text" data-k="name" value="${esc(o.name)}"></label>
+          <label class="field"><span>${tr('Type')}</span><select data-k="fieldType">${FIELD_TYPES.map(([k, l]) => `<option value="${k}"${o.fieldType === k ? ' selected' : ''}>${tr(l)}</option>`).join('')}</select></label>
+          ${o.fieldType === 'dropdown' || o.fieldType === 'list' ? `<label class="field"><span>${tr('Choices (one per line)')}</span><textarea data-k="options" rows="4">${esc(o.options.join('\n'))}</textarea></label>` : ''}
+          ${o.fieldType === 'radio' ? `<label class="field"><span>${tr('Group (radio buttons with the same group belong together)')}</span><input type="text" data-k="group" value="${esc(o.group || '')}"></label>
+            <label class="field"><span>${tr('Value of this button')}</span><input type="text" data-k="value" value="${esc(o.value || '')}"></label>` : ''}
+          ${o.fieldType === 'text' || o.fieldType === 'multiline' || o.fieldType === 'date' ? `<label class="field"><span>${tr('Default text')}</span><input type="text" data-k="value" value="${esc(o.value || '')}"></label>
+            <label class="field"><span>${tr('Font size (0 = auto)')}</span><input type="number" data-k="fontSize" min="0" max="72" value="${o.fontSize || 0}"></label>` : ''}
+          ${o.fieldType === 'checkbox' ? `<label class="field check"><input type="checkbox" data-k="checked"${o.value === 'on' ? ' checked' : ''}><span>${tr('Checked by default')}</span></label>` : ''}
+          <label class="field check"><input type="checkbox" data-k="required"${o.required ? ' checked' : ''}><span>${tr('Required')}</span></label>
         </div>`);
       wrap.addEventListener('change', (e) => {
         const k = e.target.dataset.k;
@@ -202,9 +209,9 @@ export function mount(root, tool) {
 
     function signaturePanel() {
       const wrap = h(`<div class="stack">
-          <h3>🖋️ Your signatures</h3>
+          <h3>${tr('🖋️ Your signatures')}</h3>
           <div class="sig-list" id="sigs"></div>
-          <div class="radio-tiles" id="sigMode"><label><input type="radio" name="sm" value="draw" checked>Draw</label><label><input type="radio" name="sm" value="type">Type</label><label><input type="radio" name="sm" value="upload">Upload</label></div>
+          <div class="radio-tiles" id="sigMode"><label><input type="radio" name="sm" value="draw" checked>${tr('Draw')}</label><label><input type="radio" name="sm" value="type">${trc('signature', 'Type')}</label><label><input type="radio" name="sm" value="upload">${tr('Upload')}</label></div>
           <div id="sigBody"></div>
         </div>`);
       const list = $('#sigs', wrap);
@@ -221,11 +228,11 @@ export function mount(root, tool) {
       };
       const drawList = () => {
         const sigs = load();
-        list.innerHTML = sigs.length ? '' : '<span class="muted small">None yet — make one below ♡</span>';
+        list.innerHTML = sigs.length ? '' : `<span class="muted small">${tr('None yet — make one below ♡')}</span>`;
         sigs.forEach((s, i) => {
-          const b = h(`<button title="Use this signature"><img src="${s}" alt="signature"></button>`);
+          const b = h(`<button title="${tr('Use this signature')}"><img src="${s}" alt="${tr('signature')}"></button>`);
           b.onclick = () => use(s);
-          b.oncontextmenu = (e) => { e.preventDefault(); if (confirm('Delete this signature?')) { const a = load(); a.splice(i, 1); store(a); drawList(); } };
+          b.oncontextmenu = (e) => { e.preventDefault(); if (confirm(tr('Delete this signature?'))) { const a = load(); a.splice(i, 1); store(a); drawList(); } };
           list.appendChild(b);
         });
       };
@@ -245,7 +252,7 @@ export function mount(root, tool) {
       const show = (m) => {
         if (m === 'draw') {
           body.innerHTML = `<canvas class="sig-pad" width="800" height="300"></canvas>
-            <div class="row"><input type="color" value="#1d3b8f" id="ink"><button class="btn" id="clr">Clear</button><button class="btn primary" id="ok">Use ♡</button></div>`;
+            <div class="row"><input type="color" value="#1d3b8f" id="ink"><button class="btn" id="clr">${tr('Clear')}</button><button class="btn primary" id="ok">${tr('Use ♡')}</button></div>`;
           const c = $('canvas', body);
           const ctx = c.getContext('2d');
           ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -264,9 +271,9 @@ export function mount(root, tool) {
           $('#clr', body).onclick = () => ctx.clearRect(0, 0, c.width, c.height);
           $('#ok', body).onclick = () => { const d = trim(c); if (d) save(d); else toast('Draw your signature first ♡', 'error'); };
         } else if (m === 'type') {
-          body.innerHTML = `<input type="text" id="name" placeholder="Your name" value="Maria">
-            <div class="row"><select id="font"><option value="Pacifico">Pacifico</option><option value="Caveat">Caveat</option><option value="cursive">Cursive</option></select><input type="color" id="ink" value="#1d3b8f"><button class="btn primary" id="ok">Use ♡</button></div>
-            <p class="muted small">Preview:</p><div id="pv" style="font-size:34px;background:#fff;border-radius:12px;padding:8px 12px;color:#1d3b8f"></div>`;
+          body.innerHTML = `<input type="text" id="name" placeholder="${tr('Your name')}" value="${esc(tr('Maria'))}">
+            <div class="row"><select id="font"><option value="Pacifico">Pacifico</option><option value="Caveat">Caveat</option><option value="cursive">${tr('Cursive')}</option></select><input type="color" id="ink" value="#1d3b8f"><button class="btn primary" id="ok">${tr('Use ♡')}</button></div>
+            <p class="muted small">${tr('Preview:')}</p><div id="pv" style="font-size:34px;background:#fff;border-radius:12px;padding:8px 12px;color:#1d3b8f"></div>`;
           const pv = $('#pv', body);
           const upd = () => { pv.textContent = $('#name', body).value; pv.style.fontFamily = $('#font', body).value; pv.style.color = $('#ink', body).value; };
           body.oninput = upd; body.onchange = upd; upd();
@@ -285,8 +292,8 @@ export function mount(root, tool) {
             if (d) save(d);
           };
         } else {
-          body.innerHTML = `<button class="btn" id="up">Choose an image of your signature…</button>
-            <label class="field check"><input type="checkbox" id="rmbg" checked><span>Remove white background</span></label>`;
+          body.innerHTML = `<button class="btn" id="up">${tr('Choose an image of your signature…')}</button>
+            <label class="field check"><input type="checkbox" id="rmbg" checked><span>${tr('Remove white background')}</span></label>`;
           $('#up', body).onclick = async () => {
             const [f] = await pickFiles({ accept: 'image/*' });
             if (!f) return;
@@ -319,9 +326,9 @@ export function mount(root, tool) {
     function renderSide(o, opts = {}) {
       side.replaceChildren();
       if (o) {
-        side.appendChild(h(`<h3>${TOOLS[o.type === 'image' ? 'image' : o.type]?.[0] || '✿'} Selected ${o.type === 'field' ? 'field' : o.type}</h3>`));
+        side.appendChild(h(`<h3>${TOOLS[o.type === 'image' ? 'image' : o.type]?.[0] || '✿'} ${esc(tr(SELECTED[o.type] || 'Selected'))}</h3>`));
         if (o.type === 'note') {
-          const ta = h(`<label class="field"><span>Comment</span><textarea rows="5" placeholder="Write your note…">${esc(o.text)}</textarea></label>`);
+          const ta = h(`<label class="field"><span>${tr('Comment')}</span><textarea rows="5" placeholder="${tr('Write your note…')}">${esc(o.text)}</textarea></label>`);
           ta.querySelector('textarea').onchange = (e) => editor.update(o.id, { text: e.target.value });
           side.appendChild(ta);
           if (opts.focus) setTimeout(() => ta.querySelector('textarea').focus(), 30);
@@ -330,32 +337,32 @@ export function mount(root, tool) {
         } else {
           side.appendChild(styleControls(o, true));
         }
-        const actions = h('<div class="row"><button class="btn" data-a="dup">Duplicate</button><button class="btn danger" data-a="del">Delete</button></div>');
+        const actions = h(`<div class="row"><button class="btn" data-a="dup">${tr('Duplicate')}</button><button class="btn danger" data-a="del">${tr('Delete')}</button></div>`);
         actions.onclick = (e) => { const a = e.target.dataset.a; if (a === 'dup') editor.duplicate(o.id); if (a === 'del') editor.remove(o.id); };
         side.appendChild(actions);
-        if (o.type === 'text') side.appendChild(h('<p class="muted small">Double-click the text (or press Enter) to change it.</p>'));
+        if (o.type === 'text') side.appendChild(h(`<p class="muted small">${tr('Double-click the text (or press Enter) to change it.')}</p>`));
         return;
       }
       const t = editor.tool;
-      side.appendChild(h(`<p class="note sticky">${esc(mode.tip)}</p>`));
-      if (t !== 'select') side.appendChild(h(`<h3>${TOOLS[t][0]} ${esc(TOOLS[t][1].split(' — ')[0])}</h3>`));
+      side.appendChild(h(`<p class="note sticky">${esc(tr(mode.tip))}</p>`));
+      if (t !== 'select') side.appendChild(h(`<h3>${TOOLS[t][0]} ${esc(tr(TOOLS[t][1]).split(' — ')[0])}</h3>`));
       if (t === 'field') {
-        const ft = h(`<label class="field"><span>Field type</span><select>${FIELD_TYPES.map(([k, l]) => `<option value="${k}"${style.fieldType === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label>`);
+        const ft = h(`<label class="field"><span>${tr('Field type')}</span><select>${FIELD_TYPES.map(([k, l]) => `<option value="${k}"${style.fieldType === k ? ' selected' : ''}>${tr(l)}</option>`).join('')}</select></label>`);
         ft.querySelector('select').onchange = (e) => { style.fieldType = e.target.value; };
         side.appendChild(ft);
       }
       if (mode.tools.includes('signature') && (t === 'signature' || t === 'select')) side.appendChild(signaturePanel());
       if (tool.opts.mode === 'redact') {
-        redactTerms ||= h(`<div class="stack"><h3>🔎 Redact words everywhere</h3>
-            <textarea rows="4" placeholder="One word or phrase per line, e.g. names, IBAN, phone numbers"></textarea>
-            <label class="field"><span>Images under boxes</span><select><option value="pixels">Black out covered pixels</option><option value="remove">Remove whole images</option><option value="none">Keep images</option></select></label>
-            <label class="field check"><input type="checkbox" checked><span>Also remove metadata & hidden text</span></label></div>`);
+        redactTerms ||= h(`<div class="stack"><h3>${tr('🔎 Redact words everywhere')}</h3>
+            <textarea rows="4" placeholder="${tr('One word or phrase per line, e.g. names, IBAN, phone numbers')}"></textarea>
+            <label class="field"><span>${tr('Images under boxes')}</span><select><option value="pixels">${tr('Black out covered pixels')}</option><option value="remove">${tr('Remove whole images')}</option><option value="none">${tr('Keep images')}</option></select></label>
+            <label class="field check"><input type="checkbox" checked><span>${tr('Also remove metadata & hidden text')}</span></label></div>`);
         side.appendChild(redactTerms);
       }
       if (['text', 'rect', 'ellipse', 'line', 'arrow', 'pen', 'highlight'].includes(t)) side.appendChild(styleControls(null, false));
       if (tool.opts.mode === 'fillable') {
         const n = editor.objects.filter((x) => x.type === 'field').length;
-        side.appendChild(h(`<p class="muted small">${n} new field${n === 1 ? '' : 's'} ✿ Tip: select a field to rename it or change its type.</p>`));
+        side.appendChild(h(`<p class="muted small">${trn(n, '{n} new field', '{n} new fields')} ✿ ${tr('Tip: select a field to rename it or change its type.')}</p>`));
       }
     }
     setTool(mode.start);
@@ -369,7 +376,7 @@ export function mount(root, tool) {
           const areas = editor.redactions(pdf.getPages());
           const [ta, sel, chk] = [redactTerms?.querySelector('textarea'), redactTerms?.querySelector('select'), redactTerms?.querySelector('input')];
           const terms = (ta?.value || '').split('\n').map((s) => s.trim()).filter(Boolean);
-          if (!areas.length && !terms.length) throw new Error('Mark some areas or type words to redact first ⬛');
+          if (!areas.length && !terms.length) throw new Error(tr('Mark some areas or type words to redact first ⬛'));
           const file = new File([bytes], name, { type: 'application/pdf' });
           const blob = await apiBlob('/api/redact', { file, fields: { areas, terms, images: sel?.value || 'pixels', scrub: chk ? chk.checked : true } });
           return [{ name: `${baseName(name)}-redacted.pdf`, data: blob, type: 'application/pdf' }];

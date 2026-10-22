@@ -450,7 +450,7 @@ export class Editor {
     if (this.tool === 'text') {
       e.preventDefault();
       const o = this.add({ type: 'text', page: page.index, x: hit.x, y: hit.y - st.size * 0.7, w: Math.min(220, page.w - hit.x - 4), h: st.size * LINE_H + 2,
-        text: 'Text', size: st.size, color: st.color, bold: st.bold, align: st.align, opacity: st.opacity });
+        text: tr('Text'), size: st.size, color: st.color, bold: st.bold, align: st.align, opacity: st.opacity });
       requestAnimationFrame(() => this.startEditing(o));
       this.onToolDone?.();
       return;
@@ -518,7 +518,7 @@ export class Editor {
   newField(fieldType, box) {
     const n = this.objects.filter((o) => o.type === 'field').length + 1;
     const base = { text: 'Text', multiline: 'Notes', checkbox: 'Check', radio: 'Choice', dropdown: 'Select', list: 'List', date: 'Date' }[fieldType] || 'Field';
-    const out = { fieldType, name: `${base}${n}`, required: false, fontSize: 0, options: fieldType === 'dropdown' || fieldType === 'list' ? ['Option 1', 'Option 2'] : [], value: '' };
+    const out = { fieldType, name: `${base}${n}`, required: false, fontSize: 0, options: fieldType === 'dropdown' || fieldType === 'list' ? [tr('Option {n}', { n: 1 }), tr('Option {n}', { n: 2 })] : [], value: '' };
     if (fieldType === 'checkbox' || fieldType === 'radio') {
       const s = Math.max(12, Math.min(box.w, box.h, 24));
       Object.assign(out, { w: s, h: s, group: fieldType === 'radio' ? 'Group1' : undefined, value: fieldType === 'radio' ? `Option${n}` : '' });

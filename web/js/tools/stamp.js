@@ -12,8 +12,9 @@ function anchor(g, pos, margin) {
   return { x, y, align: pos[1] === 'l' ? 'left' : pos[1] === 'r' ? 'right' : 'center' };
 }
 
+// The format is what gets printed on the pages, so it is in the chosen language.
 const numberFormats = [
-  ['{n}', '1, 2, 3'], ['Page {n}', 'Page 1'], ['Page {n} of {total}', 'Page 1 of 10'], ['{n} / {total}', '1 / 10'],
+  ['{n}', '1, 2, 3'], [tr('Page {n}'), tr('Page {n}', { n: 1 })], [tr('Page {n} of {total}'), tr('Page {n} of {total}', { n: 1, total: 10 })], ['{n} / {total}', '1 / 10'],
   ['- {n} -', '- 1 -'], ['custom', 'Custom…'],
 ];
 
@@ -31,7 +32,7 @@ export function mount(root, tool) {
   const fields = numbers ? [
     { name: 'pos', label: 'Position', type: 'select', value: 'bc', options: POS.filter(([k]) => k[0] !== 'm') },
     { name: 'format', label: 'Format', type: 'select', value: '{n}', options: numberFormats },
-    { name: 'custom', label: 'Custom text', type: 'text', value: 'Seite {n} von {total}', hint: '{n} = page number, {total} = number of pages', show: (v) => v.format === 'custom' },
+    { name: 'custom', label: 'Custom text', type: 'text', value: tr('Seite {n} von {total}'), hint: '{n} = page number, {total} = number of pages', show: (v) => v.format === 'custom' },
     { name: 'style', label: 'Numbers', type: 'radio', value: 'arabic', options: [['arabic', '1 2 3'], ['roman', 'i ii iii'], ['ROMAN', 'I II III']] },
     { name: 'start', label: 'Start counting at', type: 'number', value: 1, min: 0 },
     { name: 'from', label: 'First page to number', type: 'number', value: 1, min: 1, hint: 'e.g. 2 to skip a cover page' },
@@ -42,7 +43,7 @@ export function mount(root, tool) {
     { name: 'margin', label: 'Distance from edge (mm)', type: 'number', value: 10, min: 0 },
   ] : [
     { name: 'kind', label: 'Watermark', type: 'radio', value: 'text', options: [['text', 'Text'], ['image', 'Image']] },
-    { name: 'text', label: 'Text', type: 'text', value: 'CONFIDENTIAL', show: (v) => v.kind === 'text' },
+    { name: 'text', label: 'Text', type: 'text', value: tr('CONFIDENTIAL'), show: (v) => v.kind === 'text' },
     { name: 'size', label: 'Font size', type: 'number', value: 60, min: 4, max: 400, show: (v) => v.kind === 'text' },
     { name: 'bold', label: 'Bold', type: 'checkbox', value: true, show: (v) => v.kind === 'text' },
     { name: 'color', label: 'Color', type: 'color', value: '#ec4d8f', show: (v) => v.kind === 'text' },
@@ -60,7 +61,7 @@ export function mount(root, tool) {
     actionLabel: numbers ? 'Add page numbers' : 'Add watermark',
     fields: [...fields, ...PAGES_FIELDS],
     extraPanel: numbers ? null : (form) => {
-      const el = h('<div class="stack" hidden><button class="btn">🖼️ Choose image…</button><span class="muted small">No image chosen</span></div>');
+      const el = h(`<div class="stack" hidden><button class="btn">${tr('🖼️ Choose image…')}</button><span class="muted small">${tr('No image chosen')}</span></div>`);
       const sync = () => { el.hidden = form.values().kind !== 'image'; };
       form.el.addEventListener('change', sync);
       el.querySelector('button').onclick = async () => {
@@ -87,7 +88,7 @@ export function mount(root, tool) {
       const margin = (v.margin || 0) * MM;
       let image = null;
       if (!numbers && v.kind === 'image') {
-        if (!stampImage) throw new Error('Choose an image for the watermark ♡');
+        if (!stampImage) throw new Error(tr('Choose an image for the watermark ♡'));
         image = await doc.embedPng(stampImage.bytes);
       }
       for (const [i, page] of doc.getPages().entries()) {

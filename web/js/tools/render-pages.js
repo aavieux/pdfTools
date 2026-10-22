@@ -25,7 +25,7 @@ export function mount(root, tool) {
         const pages = pagesFromChoice(v.pages, v.range, doc.numPages);
         const out = raster ? await PDFLib.PDFDocument.create() : null;
         for (const [k, i] of pages.entries()) {
-          busyText(`Rendering page ${k + 1} of ${pages.length}…`, file.name);
+          busyText(tr('Rendering page {k} of {n}…', { k: k + 1, n: pages.length }), file.name);
           const page = await doc.getPage(i + 1);
           const canvas = await renderPage(page, { scale: v.dpi / 72, maxPixels: 60e6 });
           if (v.gray) {

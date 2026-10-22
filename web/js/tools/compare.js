@@ -51,10 +51,10 @@ async function pageTexts(doc) {
 export function mount(root, tool) {
   root.innerHTML = `<div class="tool wide">${toolHeader(tool)}
     <div class="cols" style="grid-template-columns:1fr 1fr">
-      <div class="panel-box stack"><h3 style="margin:0;color:var(--accent)">Old version</h3><div id="a"></div></div>
-      <div class="panel-box stack"><h3 style="margin:0;color:var(--accent)">New version</h3><div id="b"></div></div>
+      <div class="panel-box stack"><h3 style="margin:0;color:var(--accent)">${tr('Old version')}</h3><div id="a"></div></div>
+      <div class="panel-box stack"><h3 style="margin:0;color:var(--accent)">${tr('New version')}</h3><div id="b"></div></div>
     </div>
-    <div class="row" style="justify-content:center;margin:14px 0"><button class="btn primary big" id="go">Compare ♡</button></div>
+    <div class="row" style="justify-content:center;margin:14px 0"><button class="btn primary big" id="go">${tr('Compare ♡')}</button></div>
     <div id="out"></div></div>`;
   const files = {};
   for (const k of ['a', 'b']) {
@@ -82,15 +82,15 @@ export function mount(root, tool) {
     const ins = parts.filter((p) => p.op === '+').reduce((s, p) => s + p.words.length, 0);
     const out = $('#out', root);
     out.replaceChildren(h(`<div class="stack">
-        <div class="panel-box row between"><div class="radio-tiles" id="mode"><label><input type="radio" name="cm" value="text" checked>📝 Text changes</label><label><input type="radio" name="cm" value="visual">👀 Visual changes</label></div>
-          <span><span class="diff-del">&nbsp;${del} words removed&nbsp;</span> · <span class="diff-ins">&nbsp;${ins} words added&nbsp;</span></span></div>
+        <div class="panel-box row between"><div class="radio-tiles" id="mode"><label><input type="radio" name="cm" value="text" checked>${tr('📝 Text changes')}</label><label><input type="radio" name="cm" value="visual">${tr('👀 Visual changes')}</label></div>
+          <span><span class="diff-del">&nbsp;${trn(del, '{n} word removed', '{n} words removed')}&nbsp;</span> · <span class="diff-ins">&nbsp;${trn(ins, '{n} word added', '{n} words added')}&nbsp;</span></span></div>
         <div id="view"></div></div>`));
     const viewEl = $('#view', out);
     const showText = () => {
-      if (!del && !ins) { viewEl.replaceChildren(h('<div class="result"><span class="cat" data-cat="friend" data-n="1" data-size="5"></span><h2>The text is identical ♡</h2><p class="muted">Check “Visual changes” for layout or image differences.</p></div>')); return; }
+      if (!del && !ins) { viewEl.replaceChildren(h(`<div class="result"><span class="cat" data-cat="friend" data-n="1" data-size="5"></span><h2>${tr('The text is identical ♡')}</h2><p class="muted">${tr('Check “Visual changes” for layout or image differences.')}</p></div>`)); return; }
       const html = parts.map((p) => {
         const t = esc(p.words.join(' '));
-        if (p.op === '=') return p.words.length > 60 ? `${esc(p.words.slice(0, 25).join(' '))} <span class="muted">… ${p.words.length - 50} unchanged words …</span> ${esc(p.words.slice(-25).join(' '))}` : t;
+        if (p.op === '=') return p.words.length > 60 ? `${esc(p.words.slice(0, 25).join(' '))} <span class="muted">… ${tr('{n} unchanged words', { n: p.words.length - 50 })} …</span> ${esc(p.words.slice(-25).join(' '))}` : t;
         return `<span class="${p.op === '-' ? 'diff-del' : 'diff-ins'}">${t}</span>`;
       }).join(' ');
       viewEl.replaceChildren(h(`<div class="panel-box" style="line-height:1.8;max-height:70vh;overflow:auto">${html}</div>`));
@@ -98,7 +98,7 @@ export function mount(root, tool) {
     let pageNo = 1;
     const showVisual = async () => {
       const n = Math.max(A.numPages, B.numPages);
-      viewEl.replaceChildren(h(`<div class="stack"><div class="row" style="justify-content:center"><button class="btn icon" id="vp">‹</button><span>Page ${pageNo} of ${n}</span><button class="btn icon" id="vn">›</button><span class="muted small">pink = differences</span></div>
+      viewEl.replaceChildren(h(`<div class="stack"><div class="row" style="justify-content:center"><button class="btn icon" id="vp">‹</button><span>${tr('Page {n} of {total}', { n: pageNo, total: n })}</span><button class="btn icon" id="vn">›</button><span class="muted small">${tr('pink = differences')}</span></div>
         <div class="sheet-wrap" id="cv" style="gap:12px;flex-wrap:wrap"></div></div>`));
       $('#vp', viewEl).onclick = () => { pageNo = Math.max(1, pageNo - 1); showVisual(); };
       $('#vn', viewEl).onclick = () => { pageNo = Math.min(n, pageNo + 1); showVisual(); };
@@ -124,8 +124,8 @@ export function mount(root, tool) {
         }
       }
       dctx.putImageData(out, 0, 0);
-      const fig = (c, label) => { const f = h(`<figure style="margin:0;text-align:center"><figcaption class="muted small">${label}</figcaption></figure>`); if (c) { c.style.width = '300px'; c.style.boxShadow = 'var(--shadow)'; f.prepend(c); } else f.prepend(h('<div class="muted" style="width:300px">no page</div>')); return f; };
-      $('#cv', viewEl).append(fig(ca, 'Old'), fig(cb, 'New'), fig(diff, changed ? `${changed} changed pixels` : 'identical ♡'));
+      const fig = (c, label) => { const f = h(`<figure style="margin:0;text-align:center"><figcaption class="muted small">${label}</figcaption></figure>`); if (c) { c.style.width = '300px'; c.style.boxShadow = 'var(--shadow)'; f.prepend(c); } else f.prepend(h(`<div class="muted" style="width:300px">${tr('no page')}</div>`)); return f; };
+      $('#cv', viewEl).append(fig(ca, tr('Old')), fig(cb, tr('New')), fig(diff, changed ? tr('{n} changed pixels', { n: changed }) : tr('identical ♡')));
     };
     $('#mode', out).onchange = (e) => (e.target.value === 'text' ? showText() : showVisual());
     showText();

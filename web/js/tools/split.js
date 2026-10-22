@@ -55,7 +55,7 @@ export function mount(root, tool) {
         case 'ranges':
           groups = (v.ranges || '').split(';').map((s) => s.trim()).filter(Boolean)
             .map((s) => ({ idx: parseRange(s, count), label: `pages${s.replace(/[^0-9-]+/g, '_')}` }));
-          if (!groups.length) throw new Error('Please type some ranges, e.g. 1-3; 4-6');
+          if (!groups.length) throw new Error(tr('Please type some ranges, e.g. 1-3; 4-6'));
           break;
         case 'at': {
           const cuts = [...new Set(parseRange(v.at || '', count))].sort((a, b) => a - b).filter((i) => i < count - 1);
@@ -73,7 +73,7 @@ export function mount(root, tool) {
         }
         case 'bookmarks': {
           const starts = await chapterStarts(bytes, file.name);
-          if (!starts.length) throw new Error('This PDF has no bookmarks to split by 🙀');
+          if (!starts.length) throw new Error(tr('This PDF has no bookmarks to split by 🙀'));
           if (starts[0].idx > 0) starts.unshift({ idx: 0, title: 'start' });
           starts.forEach((s, k) => {
             const end = k + 1 < starts.length ? starts[k + 1].idx : count;
@@ -85,7 +85,7 @@ export function mount(root, tool) {
       }
       const outputs = [];
       for (const [k, g] of groups.entries()) {
-        busyText(`Writing file ${k + 1} of ${groups.length}…`);
+        busyText(tr('Writing file {k} of {n}…', { k: k + 1, n: groups.length }));
         outputs.push({ name: `${name}-${g.label}.pdf`, data: await pagesToPdf(src, g.idx), type: 'application/pdf' });
       }
       return outputs;

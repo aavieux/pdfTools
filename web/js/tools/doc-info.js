@@ -1,5 +1,5 @@
 import {
-  $, baseName, dropzone, h, openPdfLib, optionsForm, readBytes, savePdf, showResult, toolHeader, withBusy,
+  $, baseName, dropzone, esc, h, openPdfLib, optionsForm, readBytes, savePdf, showResult, toolHeader, withBusy,
 } from '../core.js';
 
 const LAYOUTS = [['', 'Reader default'], ['SinglePage', 'Single page'], ['OneColumn', 'Continuous scroll'], ['TwoColumnLeft', 'Two pages, continuous (odd left)'],
@@ -55,8 +55,8 @@ export function mount(root, tool) {
         { name: 'duplex', label: 'Print duplex', type: 'select', value: '', options: [['', 'Printer default'], ['Simplex', 'One-sided'], ['DuplexFlipLongEdge', 'Double-sided (long edge)'], ['DuplexFlipShortEdge', 'Double-sided (short edge)']] },
       ]);
     }
-    const panel = h(`<div class="panel-box stack"><div class="row between"><b>📄 ${file.name}</b><span class="muted small">${doc.getPageCount()} pages</span></div></div>`);
-    const go = h('<button class="btn primary big">Save ♡</button>');
+    const panel = h(`<div class="panel-box stack"><div class="row between"><b>📄 ${esc(file.name)}</b><span class="muted small">${trn(doc.getPageCount(), '{n} page', '{n} pages')}</span></div></div>`);
+    const go = h(`<button class="btn primary big">${tr('Save ♡')}</button>`);
     const result = h('<div></div>');
     panel.append(form.el, go);
     st.replaceChildren(panel, result);

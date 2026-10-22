@@ -13,6 +13,8 @@ const Prefs = (() => {
     friends: ['cat', 'bunny', 'dog', 'fox', 'bear', 'panda'],
     showFriends: true,
     walkers: 1,
+    // '' = follow the browser's language (see i18n.js)
+    lang: '',
     // look
     theme: 'pink',
     mode: 'auto',
@@ -25,6 +27,9 @@ const Prefs = (() => {
     groupOrder: [],
     hiddenGroups: [],
     collapsed: [],
+    // tools the user hid from the home page, and whether searching still finds them
+    hiddenTools: [],
+    searchHidden: false,
   };
   let data = {};
   try { data = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { data = {}; }

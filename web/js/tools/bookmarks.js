@@ -15,14 +15,14 @@ export function mount(root, tool) {
     let items = data.bookmarks.map((b) => ({ ...b }));
     const ui = h(`<div class="cols">
         <div class="panel-box stack">
-          <div class="row between"><b>📄 ${esc(file.name)}</b><span class="muted small">${data.pages} pages</span></div>
-          <table class="tbl"><thead><tr><th style="width:52%">Title</th><th>Page</th><th></th></tr></thead><tbody id="rows"></tbody></table>
-          <div class="row"><button class="btn" id="add">＋ Add bookmark</button><button class="btn" id="auto">✨ One per page</button><button class="btn danger" id="clear">Remove all</button></div>
-          <p class="note">psst~ use ⇥ / ⇤ to nest bookmarks inside each other ♡</p>
+          <div class="row between"><b>📄 ${esc(file.name)}</b><span class="muted small">${trn(data.pages, '{n} page', '{n} pages')}</span></div>
+          <table class="tbl"><thead><tr><th style="width:52%">${tr('Title')}</th><th>${tr('Page')}</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+          <div class="row"><button class="btn" id="add">${tr('＋ Add bookmark')}</button><button class="btn" id="auto">${tr('✨ One per page')}</button><button class="btn danger" id="clear">${tr('Remove all')}</button></div>
+          <p class="note">${tr('psst~ use ⇥ / ⇤ to nest bookmarks inside each other ♡')}</p>
         </div>
         <div class="panel-box stack sticky-side">
-          <div class="sheet-wrap" id="prev" style="min-height:200px"><p class="muted">Click a bookmark to see its page</p></div>
-          <button class="btn primary big wide" id="save">Save bookmarks ♡</button>
+          <div class="sheet-wrap" id="prev" style="min-height:200px"><p class="muted">${tr('Click a bookmark to see its page')}</p></div>
+          <button class="btn primary big wide" id="save">${tr('Save bookmarks ♡')}</button>
         </div>
       </div>`);
     const result = h('<div></div>');
@@ -39,9 +39,9 @@ export function mount(root, tool) {
           <td><div class="row" style="padding-left:${(b.level - 1) * 18}px;flex-wrap:nowrap">${b.level > 1 ? '↳' : '🔖'}<input type="text" data-k="title" value="${esc(b.title)}"></div></td>
           <td><input type="number" data-k="page" min="1" max="${data.pages}" value="${b.page}" style="width:70px"></td>
           <td><div class="row" style="flex-wrap:nowrap">
-            <button class="btn icon" data-a="out" title="Outdent">⇤</button><button class="btn icon" data-a="in" title="Indent">⇥</button>
-            <button class="btn icon" data-a="up" title="Move up">↑</button><button class="btn icon" data-a="down" title="Move down">↓</button>
-            <button class="btn icon" data-a="del" title="Delete">✕</button></div></td></tr>`).join('') || '<tr><td colspan="3" class="muted">No bookmarks yet ✿</td></tr>';
+            <button class="btn icon" data-a="out" title="${tr('Outdent')}">⇤</button><button class="btn icon" data-a="in" title="${tr('Indent')}">⇥</button>
+            <button class="btn icon" data-a="up" title="${tr('Move up')}">↑</button><button class="btn icon" data-a="down" title="${tr('Move down')}">↓</button>
+            <button class="btn icon" data-a="del" title="${tr('Delete')}">✕</button></div></td></tr>`).join('') || `<tr><td colspan="3" class="muted">${tr('No bookmarks yet ✿')}</td></tr>`;
     };
     rows.addEventListener('input', (e) => {
       const i = +e.target.closest('tr').dataset.i;
@@ -49,7 +49,7 @@ export function mount(root, tool) {
       items[i][k] = k === 'page' ? parseInt(e.target.value, 10) || 1 : e.target.value;
       if (k === 'page') preview(items[i].page);
     });
-    rows.addEventListener('focusin', (e) => { const tr = e.target.closest('tr'); if (tr?.dataset.i) preview(items[+tr.dataset.i].page); });
+    rows.addEventListener('focusin', (e) => { const row = e.target.closest('tr'); if (row?.dataset.i) preview(items[+row.dataset.i].page); });
     rows.addEventListener('click', (e) => {
       const a = e.target.closest('button')?.dataset.a;
       if (!a) return;
@@ -63,11 +63,11 @@ export function mount(root, tool) {
       if (items[0]) items[0].level = 1;
       draw();
     });
-    $('#add', ui).onclick = () => { items.push({ level: 1, title: `Chapter ${items.length + 1}`, page: Math.min(data.pages, (items.at(-1)?.page || 0) + 1) }); draw(); rows.querySelector('tr:last-child input')?.select(); };
-    $('#auto', ui).onclick = () => { items = [...Array(data.pages).keys()].map((i) => ({ level: 1, title: `Page ${i + 1}`, page: i + 1 })); draw(); };
-    $('#clear', ui).onclick = () => { if (!items.length || confirm('Remove all bookmarks?')) { items = []; draw(); } };
+    $('#add', ui).onclick = () => { items.push({ level: 1, title: tr('Chapter {n}', { n: items.length + 1 }), page: Math.min(data.pages, (items.at(-1)?.page || 0) + 1) }); draw(); rows.querySelector('tr:last-child input')?.select(); };
+    $('#auto', ui).onclick = () => { items = [...Array(data.pages).keys()].map((i) => ({ level: 1, title: tr('Page {n}', { n: i + 1 }), page: i + 1 })); draw(); };
+    $('#clear', ui).onclick = () => { if (!items.length || confirm(tr('Remove all bookmarks?'))) { items = []; draw(); } };
     $('#save', ui).onclick = async () => {
-      if (items.some((b) => b.page < 1 || b.page > data.pages)) { toast(`Pages must be between 1 and ${data.pages}`, 'error'); return; }
+      if (items.some((b) => b.page < 1 || b.page > data.pages)) { toast(tr('Pages must be between 1 and {n}', { n: data.pages }), 'error'); return; }
       const out = await withBusy('Saving bookmarks…', async () => {
         const blob = await apiBlob('/api/bookmarks/set', { file, fields: { bookmarks: items } });
         return [{ name: `${baseName(file.name)}-bookmarked.pdf`, data: blob, type: 'application/pdf' }];

@@ -65,7 +65,7 @@
       this.others = others;
       this.el = document.createElement('div');
       this.el.className = 'pal';
-      this.el.title = 'Say hi ♡';
+      this.el.title = tr('Say hi ♡');
       this.el.innerHTML = `<div class="pal-flip"><span class="cat" data-cat="friend" data-n="${n}" data-size="3"></span><div class="pal-prop"></div></div><div class="pal-fx"></div>`;
       this.cat = this.el.querySelector('.cat');
       this.prop = this.el.querySelector('.pal-prop');

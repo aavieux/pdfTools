@@ -28,7 +28,7 @@ function generate(v) {
   if (v.digits) sets.push('0123456789');
   if (v.symbols) sets.push('!@#$%^&*()-_=+[]{};:,.?/~');
   if (v.noAmbig) sets = sets.map((s) => s.replace(/[Il1O0o]/g, ''));
-  if (!sets.length) throw new Error('Choose at least one kind of character ♡');
+  if (!sets.length) throw new Error(tr('Choose at least one kind of character ♡'));
   const all = sets.join('');
   const chars = sets.map((s) => s[rand(s.length)]); // at least one of each kind
   while (chars.length < v.length) chars.push(all[rand(all.length)]);
@@ -41,11 +41,11 @@ export function mount(root, tool) {
       <div class="panel-box stack">
         <div class="pw-out" id="pw"></div>
         <div class="meter"><div id="bar"></div></div><div class="muted small" id="str"></div>
-        <div class="row" style="justify-content:center"><button class="btn primary big" id="copy">📋 Copy</button><button class="btn big" id="again">🎲 New one</button></div>
-        <h3 style="margin:8px 0 0;color:var(--accent)">More ideas</h3><div id="more" class="stack" style="gap:6px"></div>
+        <div class="row" style="justify-content:center"><button class="btn primary big" id="copy">${tr('📋 Copy')}</button><button class="btn big" id="again">${tr('🎲 New one')}</button></div>
+        <h3 style="margin:8px 0 0;color:var(--accent)">${tr('More ideas')}</h3><div id="more" class="stack" style="gap:6px"></div>
       </div>
-      <div class="panel-box stack sticky-side" id="opts"><h3 style="margin:0;color:var(--accent)">♡ Options</h3></div>
-    </div><p class="note center">Passwords are made with your browser's secure random generator and never leave this page ✿</p></div>`;
+      <div class="panel-box stack sticky-side" id="opts"><h3 style="margin:0;color:var(--accent)">${tr('♡ Options')}</h3></div>
+    </div><p class="note center">${tr("Passwords are made with your browser's secure random generator and never leave this page ✿")}</p></div>`;
   const form = optionsForm([
     { name: 'mode', label: 'Kind', type: 'radio', value: 'chars', options: [['chars', 'Random characters'], ['phrase', 'Cute passphrase']] },
     { name: 'length', label: 'Length', type: 'range', value: 18, min: 6, max: 64, show: (v) => v.mode === 'chars' },
@@ -76,7 +76,7 @@ export function mount(root, tool) {
       const pct = Math.min(100, (bits / 128) * 100);
       $('#bar', root).style.width = `${pct}%`;
       $('#bar', root).style.background = bits < 50 ? 'var(--danger)' : bits < 80 ? '#f59e0b' : 'var(--ok)';
-      $('#str', root).textContent = `${Math.round(bits)} bits of entropy · ${bits < 50 ? 'weak 🙀' : bits < 80 ? 'okay' : bits < 110 ? 'strong 💪' : 'super strong 🦁'}`;
+      $('#str', root).textContent = `${tr('{n} bits of entropy', { n: Math.round(bits) })} · ${tr(bits < 50 ? 'weak 🙀' : bits < 80 ? 'okay' : bits < 110 ? 'strong 💪' : 'super strong 🦁')}`;
       $('#more', root).replaceChildren(...Array.from({ length: 5 }, () => {
         const p = generate(v).pw;
         const b = h(`<button class="btn ghost" style="font-family:ui-monospace,monospace;justify-content:flex-start;word-break:break-all;white-space:normal">${esc(p)}</button>`);

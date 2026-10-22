@@ -5,7 +5,7 @@
 import { clamp, esc, h, loadImage, onZoomGesture, pickFiles } from './core.js';
 
 let seq = 1;
-export const FONTS = [['Fredoka', 'Fredoka'], ['Pacifico', 'Pacifico'], ['Caveat', 'Caveat'], ['Noto Sans', 'Noto Sans'], ['Georgia, serif', 'Serif']];
+export const FONTS = [['Fredoka', 'Fredoka'], ['Pacifico', 'Pacifico'], ['Caveat', 'Caveat'], ['Noto Sans', 'Noto Sans'], ['Georgia, serif', tr('Serif')]];
 export const STICKERS = ['cat:cream', 'cat:ginger', 'cat:gray', 'cat:black', 'cat:bunny.white', 'cat:dog.brown', 'cat:fox.ginger', 'cat:bear.brown', 'cat:panda', 'heart', '💖', '🌸', '✨', '🎀', '🌷', '🍓', '🧁', '🎂', '🎈', '🎉', '⭐', '🌈', '🦋', '🐾', '☀️', '🍀', '💌', '👑', '🐰'];
 
 /** Downscale big photos so the PDF stays a reasonable size. */
@@ -34,7 +34,7 @@ export function elementHTML(el, sheet, forPrint = false) {
   if (el.type === 'slot') {
     const inner = el.src
       ? `<img src="${el.src}" style="width:100%;height:100%;object-fit:cover;object-position:${el.px ?? 50}% ${el.py ?? 50}%;transform:scale(${el.zoom || 1});display:block" alt="">`
-      : (forPrint ? '' : '<span>＋ photo</span>');
+      : (forPrint ? '' : `<span>${tr('＋ photo')}</span>`);
     const frame = (el.frame ? `border:${el.frame}mm solid ${el.frameColor || '#fff'};${el.frameBottom ? `border-bottom-width:${el.frameBottom}mm;` : ''}` : '')
       + (el.shadow ?? !!el.frame ? 'box-shadow:0 1mm 3mm rgba(0,0,0,.18);' : '');
     return `<div class="slot" data-id="${el.id}" style="${pos}border-radius:${el.radius || 0}mm;${frame}${el.src ? 'background:#fff' : ''}">${inner}</div>`;
@@ -197,7 +197,7 @@ export function createDesigner(wrap, side, state, { onChange } = {}) {
   };
   document.addEventListener('keydown', onKey);
 
-  const addText = (text = 'Your text ♡') => {
+  const addText = (text = tr('Your text ♡')) => {
     const el = { id: `d${seq++}`, type: 'text', x: 20, y: 40, w: 60, h: 12, text, font: 'Fredoka', size: 24, color: '#ec4d8f', align: 'center', z: 20 };
     state.sheets[state.current].elements.push(el);
     select(el.id);
@@ -217,25 +217,24 @@ export function createDesigner(wrap, side, state, { onChange } = {}) {
     const box = side.querySelector('#selbox');
     if (!box) return;
     const el = selected && find(selected);
-    if (!el) { box.innerHTML = '<p class="muted small">Click something on the page to change it. Drag text and stickers to move them ✿</p>'; return; }
-    const common = `<label class="field"><span>Rotate</span><input type="range" data-k="rot" min="-45" max="45" value="${el.rot || 0}"></label>`;
+    if (!el) { box.innerHTML = `<p class="muted small">${tr('Click something on the page to change it. Drag text and stickers to move them ✿')}</p>`; return; }
+    const common = `<label class="field"><span>${tr('Rotate')}</span><input type="range" data-k="rot" min="-45" max="45" value="${el.rot || 0}"></label>`;
+    const frontDel = `<div class="row"><button class="btn" data-a="front">${tr('Bring to front')}</button><button class="btn danger" data-a="del">${tr('Delete')}</button></div>`;
     if (el.type === 'text') {
-      box.innerHTML = `<h3>🔤 Text</h3><label class="field"><span>Text</span><textarea data-k="text" rows="3">${esc(el.text)}</textarea></label>
-        <div class="field-row"><label class="field"><span>Font</span><select data-k="font">${FONTS.map(([v, l]) => `<option value="${v}"${el.font === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
-        <label class="field"><span>Size (pt)</span><input type="number" data-k="size" min="4" max="200" value="${el.size}"></label></div>
-        <div class="row"><input type="color" data-k="color" value="${el.color}"><select data-k="align">${['left', 'center', 'right'].map((a) => `<option${el.align === a ? ' selected' : ''}>${a}</option>`).join('')}</select>
-        <label class="field check"><input type="checkbox" data-k="bold"${el.bold ? ' checked' : ''}><span>Bold</span></label><label class="field check"><input type="checkbox" data-k="italic"${el.italic ? ' checked' : ''}><span>Italic</span></label></div>${common}`;
+      box.innerHTML = `<h3>🔤 ${tr('Text')}</h3><label class="field"><span>${tr('Text')}</span><textarea data-k="text" rows="3">${esc(el.text)}</textarea></label>
+        <div class="field-row"><label class="field"><span>${tr('Font')}</span><select data-k="font">${FONTS.map(([v, l]) => `<option value="${v}"${el.font === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+        <label class="field"><span>${tr('Size (pt)')}</span><input type="number" data-k="size" min="4" max="200" value="${el.size}"></label></div>
+        <div class="row"><input type="color" data-k="color" value="${el.color}"><select data-k="align">${[['left', 'Left'], ['center', 'Centre'], ['right', 'Right']].map(([a, l]) => `<option value="${a}"${el.align === a ? ' selected' : ''}>${tr(l)}</option>`).join('')}</select>
+        <label class="field check"><input type="checkbox" data-k="bold"${el.bold ? ' checked' : ''}><span>${tr('Bold')}</span></label><label class="field check"><input type="checkbox" data-k="italic"${el.italic ? ' checked' : ''}><span>${tr('Italic')}</span></label></div>${common}${frontDel}`;
     } else if (el.type === 'slot') {
-      box.innerHTML = `<h3>🖼️ Photo</h3><div class="row"><button class="btn" data-a="photo">${el.src ? 'Replace photo' : 'Choose photo'}</button>${el.src ? '<button class="btn danger" data-a="clear">Remove</button>' : ''}</div>
-        ${el.src ? `<label class="field"><span>Zoom</span><input type="range" data-k="zoom" min="1" max="3" step="0.05" value="${el.zoom || 1}"></label><p class="muted small">Drag the photo to choose which part shows.</p>` : ''}
-        <label class="field"><span>Rounded corners</span><input type="range" data-k="radius" min="0" max="40" value="${el.radius || 0}"></label>`;
+      box.innerHTML = `<h3>🖼️ ${tr('Photo')}</h3><div class="row"><button class="btn" data-a="photo">${tr(el.src ? 'Replace photo' : 'Choose photo')}</button>${el.src ? `<button class="btn danger" data-a="clear">${tr('Remove')}</button>` : ''}</div>
+        ${el.src ? `<label class="field"><span>${tr('Zoom')}</span><input type="range" data-k="zoom" min="1" max="3" step="0.05" value="${el.zoom || 1}"></label><p class="muted small">${tr('Drag the photo to choose which part shows.')}</p>` : ''}
+        <label class="field"><span>${tr('Rounded corners')}</span><input type="range" data-k="radius" min="0" max="40" value="${el.radius || 0}"></label>`;
     } else if (el.type === 'sticker') {
-      box.innerHTML = `<h3>✨ Sticker</h3><p class="muted small">Drag the pink dot to resize. Delete removes it.</p>${common}
-        <div class="row"><button class="btn" data-a="front">Bring to front</button><button class="btn danger" data-a="del">Delete</button></div>`;
+      box.innerHTML = `<h3>✨ ${tr('Sticker')}</h3><p class="muted small">${tr('Drag the pink dot to resize. Delete removes it.')}</p>${common}${frontDel}`;
     } else {
-      box.innerHTML = `<h3>⬜ Shape</h3><input type="color" data-k="fill" value="${el.fill}"><div class="row"><button class="btn danger" data-a="del">Delete</button></div>`;
+      box.innerHTML = `<h3>⬜ ${tr('Shape')}</h3><input type="color" data-k="fill" value="${el.fill}"><div class="row"><button class="btn danger" data-a="del">${tr('Delete')}</button></div>`;
     }
-    if (el.type === 'text') box.insertAdjacentHTML('beforeend', '<div class="row"><button class="btn" data-a="front">Bring to front</button><button class="btn danger" data-a="del">Delete</button></div>');
     box.oninput = box.onchange = (e) => {
       const k = e.target.dataset.k;
       if (!k) return;
@@ -262,7 +261,7 @@ export function createDesigner(wrap, side, state, { onChange } = {}) {
 }
 
 export function stickerPicker(onPick) {
-  const el = h(`<div class="sticker-picker">${STICKERS.map((s) => `<button data-s="${s}" title="Add sticker">${s.startsWith('cat:') ? `<span class="cat" data-cat="${s.slice(4)}" data-size="1.6"></span>` : s === 'heart' ? '<span data-heart="3"></span>' : s}</button>`).join('')}</div>`);
+  const el = h(`<div class="sticker-picker">${STICKERS.map((s) => `<button data-s="${s}" title="${tr('Add sticker')}">${s.startsWith('cat:') ? `<span class="cat" data-cat="${s.slice(4)}" data-size="1.6"></span>` : s === 'heart' ? '<span data-heart="3"></span>' : s}</button>`).join('')}</div>`);
   el.onclick = (e) => { const b = e.target.closest('button'); if (b) onPick(b.dataset.s); };
   return el;
 }

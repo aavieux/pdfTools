@@ -11,12 +11,12 @@ export function mount(root, tool) {
     <div class="stack">
       <div class="panel-box row between">
         <div class="row">
-          <button class="btn" id="newDoc">＋ New empty document</button>
-          <span class="muted small">Drag pages between documents ♡ hover a page to rotate or delete it</span>
+          <button class="btn" id="newDoc">${tr('＋ New empty document')}</button>
+          <span class="muted small">${tr('Drag pages between documents ♡ hover a page to rotate or delete it')}</span>
         </div>
         <div class="row">
-          <button class="btn" id="saveEach">Save each document</button>
-          <button class="btn primary big" id="saveAll">Merge all into one ♡</button>
+          <button class="btn" id="saveEach">${tr('Save each document')}</button>
+          <button class="btn primary big" id="saveAll">${tr('Merge all into one ♡')}</button>
         </div>
       </div>
       <div id="dz"></div>
@@ -29,9 +29,9 @@ export function mount(root, tool) {
 
   const addColumn = (title) => {
     const col = h(`<div class="doc-col">
-        <div class="row between"><input type="text" value="${esc(title)}" style="flex:1"><button class="btn icon" title="Remove document">✕</button></div>
+        <div class="row between"><input type="text" value="${esc(title)}" style="flex:1"><button class="btn icon" title="${tr('Remove document')}">✕</button></div>
         <div class="pages"></div>
-        <div class="row"><button class="btn" data-blank>＋ Blank page</button><span class="muted small" data-count></span></div>
+        <div class="row"><button class="btn" data-blank>${tr('＋ Blank page')}</button><span class="muted small" data-count></span></div>
       </div>`);
     const pages = $('.pages', col);
     Sortable.create(pages, { group: 'pages', animation: 180, filter: 'button', onSort: counts });
@@ -43,9 +43,9 @@ export function mount(root, tool) {
 
   const pageCard = (p) => {
     const el = h(`<div class="pg sortable">
-        <div class="pg-tools"><button data-t="rr" title="Rotate">⟳</button><button data-t="del" title="Delete">✕</button></div>
-        <div class="pg-img" style="aspect-ratio:1">${p.blank ? '<div class="badge-blank">blank page</div>' : ''}</div>
-        <div class="pg-num">${p.blank ? '—' : `${esc(sources[p.src].name.slice(0, 14))} p${p.index + 1}`}</div>
+        <div class="pg-tools"><button data-t="rr" title="${tr('Rotate')}">⟳</button><button data-t="del" title="${tr('Delete')}">✕</button></div>
+        <div class="pg-img" style="aspect-ratio:1">${p.blank ? `<div class="badge-blank">${tr('blank page')}</div>` : ''}</div>
+        <div class="pg-num">${p.blank ? '—' : `${esc(sources[p.src].name.slice(0, 14))} ${tr('p{n}', { n: p.index + 1 })}`}</div>
       </div>`);
     el._p = p;
     if (!p.blank) {
@@ -60,7 +60,7 @@ export function mount(root, tool) {
     if (c) { c.style.transform = `rotate(${el._p.rot}deg)`; c.style.maxHeight = el._p.rot % 180 ? '75%' : '100%'; }
   };
   const counts = () => cols.querySelectorAll('.doc-col').forEach((col) => {
-    col.querySelector('[data-count]').textContent = `${col.querySelectorAll('.pg').length} pages`;
+    col.querySelector('[data-count]').textContent = trn(col.querySelectorAll('.pg').length, '{n} page', '{n} pages');
   });
 
   cols.addEventListener('click', (e) => {
@@ -83,7 +83,7 @@ export function mount(root, tool) {
     });
   };
   $('#dz', root).appendChild(dropzone({ multiple: true, compact: true, title: '＋ Add PDF documents', onFiles: addFiles }));
-  $('#newDoc', root).onclick = () => { addColumn(`New document ${++docSeq}`); counts(); };
+  $('#newDoc', root).onclick = () => { addColumn(tr('New document {n}', { n: ++docSeq })); counts(); };
 
   const build = async (pageEls) => {
     const out = await PDFLib.PDFDocument.create();

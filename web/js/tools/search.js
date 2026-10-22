@@ -3,8 +3,8 @@ import { $, dropzone, esc, fileList, h, openPdfjs, readBytes, renderPage, toolHe
 export function mount(root, tool) {
   root.innerHTML = `<div class="tool">${toolHeader(tool)}<div class="stack">
       <div class="panel-box stack">
-        <div class="row"><input type="search" id="q" placeholder="What are you looking for?" style="flex:1;font-size:17px"><button class="btn primary big" id="go">Search ♡</button></div>
-        <div class="row"><label class="field check"><input type="checkbox" id="case"><span>Match case</span></label><label class="field check"><input type="checkbox" id="word"><span>Whole words</span></label></div>
+        <div class="row"><input type="search" id="q" placeholder="${tr('What are you looking for?')}" style="flex:1;font-size:17px"><button class="btn primary big" id="go">${tr('Search ♡')}</button></div>
+        <div class="row"><label class="field check"><input type="checkbox" id="case"><span>${tr('Match case')}</span></label><label class="field check"><input type="checkbox" id="word"><span>${tr('Whole words')}</span></label></div>
       </div>
       <div id="files"></div><div id="add"></div><div id="res" class="stack"></div><div id="pv"></div></div></div>`;
   const list = fileList({ sortable: false });
@@ -16,9 +16,10 @@ export function mount(root, tool) {
     const q = $('#q', root).value.trim();
     const files = list.files();
     if (!q || !files.length) return;
-    const flags = $('#case', root).checked ? 'g' : 'gi';
+    const flags = $('#case', root).checked ? 'gu' : 'giu';
     const pat = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp($('#word', root).checked ? `\\b${pat}\\b` : pat, flags);
+    // Unicode-aware word edges (\b only knows Latin letters, so it would fail for Cyrillic).
+    const re = new RegExp($('#word', root).checked ? `(?<![\\p{L}\\p{N}_])${pat}(?![\\p{L}\\p{N}_])` : pat, flags);
     const results = await withBusy('Searching…', async () => {
       const out = [];
       for (const f of files) {
@@ -44,12 +45,12 @@ export function mount(root, tool) {
     if (!results) return;
     const total = results.reduce((s, r) => s + r.hits.length, 0);
     const res = $('#res', root);
-    res.replaceChildren(h(`<p class="note">${total ? `Found ${total} match${total === 1 ? '' : 'es'} in ${results.filter((r) => r.hits.length).length} file(s) ✿` : 'Nothing found 🙀 — scanned PDFs need “PDF OCR” first.'}</p>`));
+    res.replaceChildren(h(`<p class="note">${total ? trn(total, 'Found {n} match in {files} file(s) ✿', 'Found {n} matches in {files} file(s) ✿', { files: results.filter((r) => r.hits.length).length }) : tr('Nothing found 🙀 — scanned PDFs need “PDF OCR” first.')}</p>`));
     for (const r of results) {
       if (!r.hits.length) continue;
-      const box = h(`<div class="panel-box stack"><b>📄 ${esc(r.f.name)} <span class="muted small">${r.hits.length} match${r.hits.length === 1 ? '' : 'es'}</span></b></div>`);
+      const box = h(`<div class="panel-box stack"><b>📄 ${esc(r.f.name)} <span class="muted small">${trn(r.hits.length, '{n} match', '{n} matches')}</span></b></div>`);
       for (const hit of r.hits.slice(0, 100)) {
-        const b = h(`<button class="btn ghost" style="justify-content:flex-start;white-space:normal;text-align:left;border-radius:12px"><span class="badge">p${hit.page + 1}</span> …${esc(hit.snippet[0])}<mark>${esc(hit.snippet[1])}</mark>${esc(hit.snippet[2])}…</button>`);
+        const b = h(`<button class="btn ghost" style="justify-content:flex-start;white-space:normal;text-align:left;border-radius:12px"><span class="badge">${tr('p{n}', { n: hit.page + 1 })}</span> …${esc(hit.snippet[0])}<mark>${esc(hit.snippet[1])}</mark>${esc(hit.snippet[2])}…</button>`);
         b.onclick = async () => {
           const page = await r.doc.getPage(hit.page + 1);
           const c = await renderPage(page, { width: 1000 });
@@ -66,7 +67,7 @@ export function mount(root, tool) {
           }
           c.style.width = '100%';
           c.style.maxWidth = '640px';
-          $('#pv', root).replaceChildren(h(`<div class="panel-box stack"><b>${esc(r.f.name)} — page ${hit.page + 1}</b></div>`));
+          $('#pv', root).replaceChildren(h(`<div class="panel-box stack"><b>${esc(r.f.name)} — ${tr('page {n}', { n: hit.page + 1 })}</b></div>`));
           $('#pv .panel-box', root).appendChild(c);
           $('#pv', root).scrollIntoView({ behavior: 'smooth' });
         };

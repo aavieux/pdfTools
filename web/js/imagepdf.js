@@ -4,8 +4,8 @@ import { MM, PAGE_SIZES, apiBlob, canvasToBlob, extOf, loadImage, readBytes } fr
 
 export const IMAGE_EXT = new Set(['jpg', 'jpeg', 'jfif', 'png', 'webp', 'gif', 'bmp', 'svg', 'heic', 'heif', 'tif', 'tiff']);
 
-/** Decode one file into one or more images (TIFF can have many pages). */
-async function decode(file) {
+/** Decode one file into one or more images (TIFF can have many pages). Also used by “Make it look scanned”. */
+export async function decode(file) {
   const ext = extOf(file.name);
   if (['heic', 'heif', 'tif', 'tiff'].includes(ext)) {
     const blob = await apiBlob('/api/images/convert', { file, fields: { to: 'png' } });

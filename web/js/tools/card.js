@@ -2,7 +2,7 @@ import { $, h, htmlToPdf, showResult, toolHeader, withBusy, zoomControls } from 
 import { createDesigner, exportHTML, stickerPicker } from '../designer.js';
 
 let n = 0;
-const T = (text, x, y, w, hh, o = {}) => ({ id: `t${n++}`, type: 'text', text, x, y, w, h: hh, font: 'Fredoka', size: 20, color: '#c2185b', align: 'center', z: 10, ...o });
+const T = (text, x, y, w, hh, o = {}) => ({ id: `t${n++}`, type: 'text', text: tr(text), x, y, w, h: hh, font: 'Fredoka', size: 20, color: '#c2185b', align: 'center', z: 10, ...o });
 const S = (x, y, w, hh, o = {}) => ({ id: `s${n++}`, type: 'slot', src: null, x, y, w, h: hh, radius: 3, z: 2, ...o });
 const K = (value, x, y, w, hh, rot = 0) => ({ id: `k${n++}`, type: 'sticker', value, x, y, w, h: hh, rot, z: 30 });
 const R = (x, y, w, hh, fill, o = {}) => ({ id: `r${n++}`, type: 'rect', x, y, w, h: hh, fill, z: 1, ...o });
@@ -75,16 +75,16 @@ const TEMPLATES = {
 export function mount(root, tool) {
   root.innerHTML = `<div class="tool wide">${toolHeader(tool)}
     <div class="cols" style="grid-template-columns:minmax(0,1fr) 330px">
-      <div class="stack"><div class="row" id="pages" style="justify-content:center"></div><div class="row between"><span class="muted small">Pinch or hold Ctrl/⌘ and scroll to zoom ✿</span><span id="zoomBar"></span></div><div class="sheet-wrap design-area" id="wrap" style="height:calc(100vh - 300px)"></div></div>
+      <div class="stack"><div class="row" id="pages" style="justify-content:center"></div><div class="row between"><span class="muted small">${tr('Pinch or hold Ctrl/⌘ and scroll to zoom ✿')}</span><span id="zoomBar"></span></div><div class="sheet-wrap design-area" id="wrap" style="height:calc(100vh - 300px)"></div></div>
       <div class="panel-box stack sticky-side side" id="side" style="max-height:calc(100vh - 160px);overflow:auto">
-        <h3 style="margin:0;color:var(--accent)">💌 Template</h3><div class="tpl-picker" id="tpls"></div>
+        <h3 style="margin:0;color:var(--accent)">${tr('💌 Template')}</h3><div class="tpl-picker" id="tpls"></div>
         <p class="note" id="tplnote"></p>
-        <h3 style="margin:0;color:var(--accent)">✨ Add</h3>
-        <button class="btn" id="text">🔤 Add text</button>
+        <h3 style="margin:0;color:var(--accent)">${tr('✨ Add')}</h3>
+        <button class="btn" id="text">${tr('🔤 Add text')}</button>
         <div id="stickers"></div>
-        <label class="field"><span>Page background</span><input type="color" id="bg" value="#ffffff"></label>
+        <label class="field"><span>${tr('Page background')}</span><input type="color" id="bg" value="#ffffff"></label>
         <div id="selbox" class="stack"></div>
-        <button class="btn primary big wide" id="save">Save card as PDF ♡</button>
+        <button class="btn primary big wide" id="save">${tr('Save card as PDF ♡')}</button>
       </div>
     </div><div id="result"></div></div>`;
   const state = { sheets: [], current: 0 };
@@ -92,7 +92,7 @@ export function mount(root, tool) {
   $('#zoomBar', root).replaceWith(zoomControls(designer.view, { fit: 'fit', fitLabel: 'Fit page' }));
   const pagesBar = () => {
     $('#pages', root).replaceChildren(...state.sheets.map((_, i) => {
-      const b = h(`<button class="btn${i === state.current ? ' on' : ''}">${state.sheets.length === 2 ? ['Outside', 'Inside'][i] : `Page ${i + 1}`}</button>`);
+      const b = h(`<button class="btn${i === state.current ? ' on' : ''}">${state.sheets.length === 2 ? tr(['Outside', 'Inside'][i]) : tr('Page {n}', { n: i + 1 })}</button>`);
       b.onclick = () => { state.current = i; pagesBar(); designer.render(); };
       return b;
     }));
@@ -100,12 +100,12 @@ export function mount(root, tool) {
   const use = (name) => {
     state.sheets = TEMPLATES[name].make();
     state.current = 0;
-    $('#tplnote', root).textContent = TEMPLATES[name].note;
-    $('#tpls', root).querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.textContent === name));
+    $('#tplnote', root).textContent = tr(TEMPLATES[name].note);
+    $('#tpls', root).querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.name === name));
     pagesBar();
     designer.render();
   };
-  $('#tpls', root).append(...Object.keys(TEMPLATES).map((k) => { const b = h(`<button>${k}</button>`); b.onclick = () => use(k); return b; }));
+  $('#tpls', root).append(...Object.keys(TEMPLATES).map((k) => { const b = h(`<button data-name="${k}">${tr(k)}</button>`); b.onclick = () => use(k); return b; }));
   $('#text', root).onclick = () => designer.addText();
   $('#stickers', root).appendChild(stickerPicker((s) => designer.addSticker(s)));
   $('#bg', root).oninput = (e) => { state.sheets[state.current].bg = e.target.value; designer.render(); };
