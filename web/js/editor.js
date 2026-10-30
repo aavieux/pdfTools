@@ -108,6 +108,13 @@ export class PageView {
     });
   }
 
+  /** The page in the middle of the view. */
+  current() {
+    const r = this.scrollEl.getBoundingClientRect();
+    const mid = r.top + r.height / 2;
+    return this.pages.find((p) => p.el.getBoundingClientRect().bottom >= mid) || this.pages.at(-1);
+  }
+
   /** Page + display-space point under a pointer event. */
   hit(e) {
     const box = e.target.closest?.('.page-box');
@@ -153,6 +160,19 @@ export class Editor {
     this.undoStack = [];
     this.redoStack = [];
     this.renderAll();
+  }
+
+  /** Show `doc`, which has a new page at index `at`; objects on later pages move along with their page. */
+  async pageInserted(doc, at) {
+    const shift = (list) => { for (const o of list) if (o.page >= at) o.page += 1; return list; };
+    shift(this.objects);
+    this.undoStack = this.undoStack.map((s) => JSON.stringify(shift(JSON.parse(s))));
+    this.redoStack = this.redoStack.map((s) => JSON.stringify(shift(JSON.parse(s))));
+    this.select(null);
+    const old = this.view.doc;
+    await this.view.open(doc);
+    old?.destroy();
+    this.setTool(this.tool);
   }
 
   /* ---------- history ---------- */

@@ -62,6 +62,7 @@ export function mount(root, tool) {
         <div class="row"><b>📄 ${esc(name)}</b>
           <button class="btn icon" id="undo" title="${tr('Undo (Ctrl+Z)')}">↶</button><button class="btn icon" id="redo" title="${tr('Redo (Ctrl+Shift+Z)')}">↷</button>
           <span id="zoom"></span>
+          ${mode.server ? '' : `<button class="btn" id="addpage" title="${esc(tr('Add a blank page after the page you are looking at'))}">${tr('➕ Add page')}</button>`}
         </div>
         <div class="row"><button class="btn" id="other">${tr('Open another')}</button><button class="btn primary big" id="save">${tr(mode.server ? 'Redact & save' : 'Save PDF')} ♡</button></div>
       </div>
@@ -105,6 +106,25 @@ export function mount(root, tool) {
     new ResizeObserver(() => { if (editor.view.zoom === 'width') editor.view.layout(); }).observe($('#area', ui));
     await editor.open(doc);
     syncUndo();
+
+    /* ----- adding blank pages ----- */
+    if (!mode.server) $('#addpage', ui).onclick = async () => {
+      if (editor.editing) editor.stopEditing();
+      const cur = editor.view.current();
+      const at = cur.index + 1;
+      // The new page takes the size of the page it follows, as the reader sees it.
+      const next = await withBusy('Adding a page…', async () => {
+        const pdf = await openPdfLib(bytes, name);
+        pdf.insertPage(at, [cur.w, cur.h]);
+        bytes = await savePdf(pdf);
+        return openPdfjs(bytes, name);
+      });
+      if (!next) return;
+      await editor.pageInserted(next, at);
+      editor.view.pages[at].el.scrollIntoView({ block: 'center' });
+      if (mode.tools.includes('text')) setTool('text');
+      toast(tr('Blank page {n} added ~ click on it to write ✿', { n: at + 1 }));
+    };
 
     /* ----- placing images & signatures ----- */
     let pending = null; // { image, w, h }

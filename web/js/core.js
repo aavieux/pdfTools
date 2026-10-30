@@ -758,6 +758,7 @@ async function unpackZips(outputs) {
 /**
  * The common "choose files → set options → go → download" flow.
  * cfg: { tool, accept, multiple, manyOutputs, fields, actionLabel, intro, run: async (files, values, ctx) => outputs[] }
+ *      extraLeft: (form, files) => element shown under the file list (optional)
  * Outputs may set `unzip: true` to be unpacked into their files; when several files come out the
  * user can ask for one ZIP instead (manyOutputs shows that option even for a single input).
  */
@@ -795,8 +796,20 @@ export function simpleTool(root, cfg) {
     if (cfg.multiple) {
       const more = dropzone({ accept: cfg.accept ?? '.pdf', multiple: true, compact: true, title: '+ Add more files', onFiles: (f) => list.add(f) });
       left.appendChild(more);
+      // Files dropped anywhere on the file list land in the "add more" zone too.
+      // Only real files count, so dragging the cards around to reorder still works.
+      const isFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+      left.addEventListener('dragover', (e) => { if (!isFiles(e)) return; e.preventDefault(); more.classList.add('over'); });
+      left.addEventListener('dragleave', (e) => { if (!left.contains(e.relatedTarget)) more.classList.remove('over'); });
+      left.addEventListener('drop', (e) => {
+        if (!isFiles(e)) return;
+        e.preventDefault();
+        more.classList.remove('over');
+        more._handle([...e.dataTransfer.files]);
+      });
       if (list && cfg.sortHint !== false) left.appendChild(h(`<p class="note">${tr('psst~ drag the cards to change the order ♡')}</p>`));
     }
+    if (cfg.extraLeft) left.appendChild(cfg.extraLeft(form, files));
     if (spec.length || zipOption) right.appendChild(form.el);
     else right.appendChild(h(`<p class="muted small" style="margin:0">${tr('No options needed ~ just press the button ✿')}</p>`));
     if (cfg.extraPanel) right.appendChild(cfg.extraPanel(form));
