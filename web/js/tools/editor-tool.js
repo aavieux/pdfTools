@@ -104,27 +104,51 @@ export function mount(root, tool) {
     $('#zoom', ui).replaceWith(zoomControls(editor.view));
     $('#other', ui).onclick = start;
     new ResizeObserver(() => { if (editor.view.zoom === 'width') editor.view.layout(); }).observe($('#area', ui));
+
+    /* ----- adding, moving and removing pages ----- */
+    // Each change is made to the PDF itself, which is then shown again; edits follow their pages.
+    const changePages = async (text, change, map) => {
+      if (editor.editing) editor.stopEditing();
+      const next = await withBusy(text, async () => {
+        const pdf = await openPdfLib(bytes, name);
+        change(pdf);
+        const out = await savePdf(pdf);
+        const d = await openPdfjs(out, name);
+        if (d) bytes = out;
+        return d;
+      });
+      // On failure show the old pages again (a cancelled drag has already moved them on screen).
+      await editor.pagesChanged(next || editor.view.doc, next ? map : undefined);
+      return !!next;
+    };
+    if (!mode.server) {
+      editor.view.pageActions = {
+        move: (from, to) => changePages('Moving the page…', (pdf) => {
+          const p = pdf.getPage(from);
+          pdf.removePage(from);
+          pdf.insertPage(to, p);
+        }, (i) => {
+          const order = editor.view.pages.map((p) => p.index);
+          order.splice(to, 0, order.splice(from, 1)[0]);
+          return order.indexOf(i);
+        }),
+        remove: (at) => {
+          if (!confirm(tr('Remove page {n}? Anything you added on it goes too.', { n: at + 1 }))) return;
+          changePages('Removing the page…', (pdf) => pdf.removePage(at), (i) => (i === at ? -1 : i > at ? i - 1 : i));
+        },
+      };
+      $('#addpage', ui).onclick = async () => {
+        const cur = editor.view.current();
+        const at = cur.index + 1;
+        // The new page takes the size of the page it follows, as the reader sees it.
+        if (!await changePages('Adding a page…', (pdf) => pdf.insertPage(at, [cur.w, cur.h]), (i) => (i >= at ? i + 1 : i))) return;
+        editor.view.pages[at].el.scrollIntoView({ block: 'center' });
+        if (mode.tools.includes('text')) setTool('text');
+        toast(tr('Blank page {n} added ~ click on it to write ✿', { n: at + 1 }));
+      };
+    }
     await editor.open(doc);
     syncUndo();
-
-    /* ----- adding blank pages ----- */
-    if (!mode.server) $('#addpage', ui).onclick = async () => {
-      if (editor.editing) editor.stopEditing();
-      const cur = editor.view.current();
-      const at = cur.index + 1;
-      // The new page takes the size of the page it follows, as the reader sees it.
-      const next = await withBusy('Adding a page…', async () => {
-        const pdf = await openPdfLib(bytes, name);
-        pdf.insertPage(at, [cur.w, cur.h]);
-        bytes = await savePdf(pdf);
-        return openPdfjs(bytes, name);
-      });
-      if (!next) return;
-      await editor.pageInserted(next, at);
-      editor.view.pages[at].el.scrollIntoView({ block: 'center' });
-      if (mode.tools.includes('text')) setTool('text');
-      toast(tr('Blank page {n} added ~ click on it to write ✿', { n: at + 1 }));
-    };
 
     /* ----- placing images & signatures ----- */
     let pending = null; // { image, w, h }

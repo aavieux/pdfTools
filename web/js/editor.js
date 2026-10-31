@@ -32,7 +32,12 @@ export class PageView {
   async open(doc) {
     this.doc = doc;
     this.pages = [];
+    this.sortable?.destroy();
+    this.sortable = null;
+    this.observer.disconnect();
     this.stack.replaceChildren();
+    // pageActions: { move(from, to), remove(index) } adds a drag grip and a remove button under every page.
+    const act = this.pageActions;
     for (let i = 0; i < doc.numPages; i++) {
       const p = await doc.getPage(i + 1);
       const vp = p.getViewport({ scale: 1 });
@@ -40,9 +45,22 @@ export class PageView {
       const page = { index: i, el, layer: el.querySelector('.layer'), w: vp.width, h: vp.height, rot: p.rotate, view: p.view, rendered: 0 };
       el._page = page;
       this.pages.push(page);
-      this.stack.appendChild(el);
-      this.stack.appendChild(h(`<div class="page-label">${i + 1} / ${doc.numPages}</div>`));
+      const label = h(`<div class="page-label">
+          ${act ? `<span class="page-grip" title="${esc(tr('Drag to move this page'))}">⠿</span>` : ''}<span>${i + 1} / ${doc.numPages}</span>
+          ${act ? `<button class="page-del" title="${esc(tr('Remove this page'))}"${doc.numPages < 2 ? ' disabled' : ''}>🗑</button>` : ''}
+        </div>`);
+      if (act) label.querySelector('.page-del').onclick = () => act.remove(i);
+      const wrap = h('<div class="page-wrap"></div>');
+      wrap.append(el, label);
+      this.stack.appendChild(wrap);
       this.observer.observe(el);
+    }
+    if (act) {
+      this.sortable = Sortable.create(this.stack, {
+        handle: '.page-grip',
+        animation: 180,
+        onEnd: (e) => { if (e.oldIndex !== e.newIndex) act.move(e.oldIndex, e.newIndex); },
+      });
     }
     this.layout();
   }
@@ -162,17 +180,24 @@ export class Editor {
     this.renderAll();
   }
 
-  /** Show `doc`, which has a new page at index `at`; objects on later pages move along with their page. */
-  async pageInserted(doc, at) {
-    const shift = (list) => { for (const o of list) if (o.page >= at) o.page += 1; return list; };
-    shift(this.objects);
-    this.undoStack = this.undoStack.map((s) => JSON.stringify(shift(JSON.parse(s))));
-    this.redoStack = this.redoStack.map((s) => JSON.stringify(shift(JSON.parse(s))));
+  /**
+   * Show `doc` after pages were added, moved or removed. `map(oldIndex)` gives a page's new index,
+   * or -1 if it was removed; objects follow their page and go with it.
+   */
+  async pagesChanged(doc, map = (i) => i) {
+    const fix = (list) => list.filter((o) => map(o.page) >= 0).map((o) => ({ ...o, page: map(o.page) }));
+    this.objects = fix(this.objects);
+    this.undoStack = this.undoStack.map((s) => JSON.stringify(fix(JSON.parse(s))));
+    this.redoStack = this.redoStack.map((s) => JSON.stringify(fix(JSON.parse(s))));
     this.select(null);
     const old = this.view.doc;
+    const { scrollTop, scrollLeft } = this.area;
     await this.view.open(doc);
-    old?.destroy();
+    this.area.scrollTop = scrollTop;
+    this.area.scrollLeft = scrollLeft;
+    if (old !== doc) old?.destroy();
     this.setTool(this.tool);
+    this.onChange?.();
   }
 
   /* ---------- history ---------- */

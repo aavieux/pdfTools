@@ -198,7 +198,9 @@ const MARKUP = `<div class="crop-tool"><div class="ctoolbar">
 export function mount(root) {
   root.innerHTML = MARKUP;
   const cleanups = [];
+  // While parked off the page (see main.js), keys and drops are for the tool on screen.
   const listen = (target, type, fn, opts) => {
+    if (type !== 'beforeunload') { const f = fn; fn = (e) => { if (dropOverlay.isConnected) f(e); }; }
     target.addEventListener(type, fn, opts);
     cleanups.push(() => target.removeEventListener(type, fn, opts));
   };
@@ -1227,6 +1229,7 @@ export function mount(root) {
   // Re-fit on resize.
   let resizeTimer = 0;
   const resizeObs = new ResizeObserver(() => {
+    if (!els.viewer.isConnected) return;
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       if (S.doc && typeof S.zoom === 'string') renderMain();

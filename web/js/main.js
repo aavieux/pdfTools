@@ -5,7 +5,15 @@ import { openToolPicker } from './handoff.js';
 
 const app = $('#app');
 let unmount = null;
+let mounted = null; // the tool on screen, once its mount() went through
 let onHome = false;
+
+/*
+ * A tool left through “↪ Other tool” isn't thrown away: it is parked, still alive, so
+ * “↩ Back to …” in the top bar (or opening that tool again) brings it back with its edits.
+ */
+const MAX_PARKED = 3;
+const parked = [];
 const lastFilter = { q: '', group: Prefs.get('filter') || '', showHidden: false };
 
 const GREETINGS = [
@@ -199,6 +207,21 @@ $('#nextBtn').addEventListener('click', async () => {
   if (files?.length) openToolPicker(files, { save: Handoff.live ? false : null });
 });
 
+// ↩ Back to …: the most recently parked tool.
+function updateBackBtn() {
+  const last = parked.at(-1);
+  $('#backBtn').hidden = !last;
+  if (!last) return;
+  $('#backBtn').title = tr('Back to {name} — {file}', { name: last.tool.name, file: last.current[0]?.name || '…' });
+  $('#backBtn').innerHTML = `↩<span class="hide-sm"> ${esc(tr('Back to {name}', { name: last.tool.name }))}</span>`;
+}
+$('#backBtn').addEventListener('click', () => {
+  const last = parked.at(-1);
+  if (!last) return;
+  if (location.hash === `#/${last.tool.id}`) window.dispatchEvent(new HashChangeEvent('hashchange'));
+  else location.hash = `#/${last.tool.id}`;
+});
+
 // EN | БГ switch in the top bar: shows both languages, the current one highlighted.
 $('#langBtn').innerHTML = Object.keys(LANGS).map((l) => `<span class="${l === LANG ? 'on' : ''}" lang="${l}">${l === 'bg' ? 'БГ' : 'EN'}</span>`).join('');
 $('#langBtn').setAttribute('aria-label', tr('Switch language'));
@@ -206,18 +229,23 @@ $('#langBtn').addEventListener('click', () => setLang(LANG === 'bg' ? 'en' : 'bg
 
 /* ---------- Routing ---------- */
 
-async function openTool(tool) {
+function showTool(tool) {
   onHome = false;
   document.title = `${tool.name} — ${APP_NAME}`;
   $('#crumbs').textContent = `› ${tool.name}`;
   $('#homeLink').hidden = false;
   document.body.classList.toggle('fullscreen-tool', tool.module === 'crop');
+}
+
+async function openTool(tool) {
+  showTool(tool);
   app.innerHTML = '<div class="tool"><div class="nap"><span class="cat bounce" data-cat="main" data-size="4"></span></div></div>';
   try {
     const mod = await import(`./tools/${tool.module}.js`);
     if (location.hash.slice(2).split('?')[0] !== tool.id) return; // navigated away while loading
     app.replaceChildren();
     unmount = (await mod.mount(app, tool)) || null;
+    mounted = tool;
     Handoff.take(); // a tool without a drop zone leaves them; don't let the next tool pick them up
   } catch (e) {
     console.error(e);
@@ -225,24 +253,52 @@ async function openTool(tool) {
   }
 }
 
+function closeTool(fn) {
+  if (typeof fn !== 'function') return;
+  try { fn(); } catch (e) { console.error(e); }
+}
+
+/** Take the tool on screen off the page without closing it. */
+function park() {
+  parked.push({ tool: mounted, unmount, nodes: [...app.childNodes], current: Handoff.current, live: Handoff.live, scroll: window.scrollY });
+  app.replaceChildren();
+  while (parked.length > MAX_PARKED) closeTool(parked.shift().unmount);
+}
+
+/** Put a parked tool back on the page, as it was. */
+function resume(entry) {
+  parked.splice(parked.indexOf(entry), 1);
+  showTool(entry.tool);
+  app.replaceChildren(...entry.nodes);
+  unmount = entry.unmount;
+  mounted = entry.tool;
+  Handoff.note(entry.current);
+  Handoff.live = entry.live;
+  window.scrollTo(0, entry.scroll);
+  toast(tr('Back in {name}, where you left off ♡', { name: entry.tool.name }));
+}
+
 async function route() {
-  if (typeof unmount === 'function') {
-    try { unmount(); } catch (e) { console.error(e); }
-  }
+  // Files handed on are for the tool being opened now; the top bar button starts empty again.
+  const handed = Handoff.take();
+  if (handed && mounted) park(); else closeTool(unmount);
   unmount = null;
+  mounted = null;
   window.scrollTo(0, 0);
   const id = location.hash.replace(/^#\/?/, '').split('?')[0];
   const tool = TOOL_BY_ID[id];
-  // Files handed on are for the tool being opened now; the top bar button starts empty again.
-  const handed = Handoff.take();
   Handoff.reset();
   if (tool) Handoff.send(handed);
+  const waiting = !handed && parked.findLast((p) => p.tool.id === id);
   if (!id || !tool) {
     if (id) toast('That tool does not exist ♡', 'error');
     home();
+  } else if (waiting) {
+    resume(waiting);
   } else {
     await openTool(tool);
   }
+  updateBackBtn();
 }
 
 window.addEventListener('hashchange', route);

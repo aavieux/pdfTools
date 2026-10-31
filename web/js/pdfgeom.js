@@ -92,6 +92,29 @@ export async function embedUpright(targetDoc, srcPage) {
   };
 }
 
+/**
+ * Add pages `idx` of `src` to `out`, each redrawn onto a page of size `base` ([w, h]) scaled to fit
+ * and centred. `orient` is 'portrait', 'landscape' or 'keep' (turn `base` to match each page).
+ * With no `base` the first page's size is used; returns the base so the next document can reuse it.
+ */
+export async function addPagesSized(out, src, idx, base, orient) {
+  for (const i of idx) {
+    const page = src.getPage(i);
+    // A page without any content (truly blank) can't be embedded, so it just becomes a blank page.
+    const emb = page.node.Contents() ? await embedUpright(out, page) : null;
+    const { width: pw, height: ph } = emb || page.getSize();
+    base ||= [pw, ph];
+    let [w, h] = base;
+    const land = orient === 'landscape' || (orient === 'keep' && pw > ph);
+    if (land !== (w > h)) [w, h] = [h, w];
+    const target = out.addPage([w, h]);
+    if (!emb) continue;
+    const s = Math.min(w / pw, h / ph);
+    emb.draw(target, { x: (w - pw * s) / 2, y: (h - ph * s) / 2, width: pw * s, height: ph * s });
+  }
+  return base;
+}
+
 /** Move the most recently added content stream to the back (draw behind existing content). */
 export function sendLastStreamToBack(page) {
   const { PDFArray, PDFName } = PDFLib;

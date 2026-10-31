@@ -1,5 +1,5 @@
 import { PAGE_SIZES, baseName, openPdfLib, parseRange, readBytes, savePdf, simpleTool } from '../core.js';
-import { embedUpright } from '../pdfgeom.js';
+import { addPagesSized } from '../pdfgeom.js';
 
 export function mount(root, tool) {
   simpleTool(root, {
@@ -27,20 +27,7 @@ export function mount(root, tool) {
         if (v.size === 'keep') {
           (await out.copyPages(src, idx)).forEach((p) => out.addPage(p));
         } else {
-          for (const i of idx) {
-            const page = src.getPage(i);
-            // A page without any content (truly blank) can't be embedded, so it just becomes a blank page.
-            const emb = page.node.Contents() ? await embedUpright(out, page) : null;
-            const { width: pw, height: ph } = emb || page.getSize();
-            base ||= [pw, ph];
-            let [w, h] = base;
-            const land = v.orient === 'landscape' || (v.orient === 'keep' && pw > ph);
-            if (land !== (w > h)) [w, h] = [h, w];
-            const target = out.addPage([w, h]);
-            if (!emb) continue;
-            const s = Math.min(w / pw, h / ph);
-            emb.draw(target, { x: (w - pw * s) / 2, y: (h - ph * s) / 2, width: pw * s, height: ph * s });
-          }
+          base = await addPagesSized(out, src, idx, base, v.orient);
         }
         if (v.blank && idx.length % 2 === 1 && k < files.length - 1) {
           const last = out.getPage(out.getPageCount() - 1).getSize();
